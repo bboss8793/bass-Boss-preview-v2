@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  font-family: Georgia, 'Times New Roman', serif;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: #0a0900;
+  color: #f0e8c8;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
