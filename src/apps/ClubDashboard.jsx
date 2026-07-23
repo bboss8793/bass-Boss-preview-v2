@@ -492,7 +492,7 @@ function PaperReviewQueue({ tournament, boats, onReviewed }) {
           <div className="w-full max-w-md rounded-2xl overflow-y-auto max-h-[90vh] space-y-4 p-5" style={{ backgroundColor: C.card, border: `2px solid ${C.gold}` }}>
             <div className="flex items-start justify-between">
               <div>
-                <p className="font-bold text-base" style={{ color: C.goldLight }}>Review Catch</p>
+                <p className="bb-title font-bold text-base" style={{ color: C.goldLight }}>Review Catch</p>
                 <p className="text-xs mt-0.5" style={{ color: C.muted }}>
                   {reviewing.angler_name} · {boats.find((b) => b.id === reviewing.boat_id)?.name || 'Unknown boat'}
                 </p>
@@ -870,7 +870,7 @@ function DirectorTab({ orgId, tier = 'pro' }) {
               return (
                 <div key={t.id} className="rounded p-3 flex items-center justify-between" style={{ backgroundColor: C.bg, border: `1px solid ${C.border}` }}>
                   <div>
-                    <p className="font-bold text-sm" style={{ color: C.text }}>{t.name}</p>
+                    <p className="bb-title font-bold text-sm" style={{ color: C.text }}>{t.name}</p>
                     <p className="text-xs" style={{ color: C.muted }}>{t.lake_name} · {t.date || 'No date'}</p>
                     <p className="text-xs mt-0.5" style={{ color: C.muted }}>
                       {TYPE_LABELS[t.format_type || 'team']} · {SCORING_LABELS[t.scoring_format || 'best5']}
@@ -913,7 +913,7 @@ function DirectorTab({ orgId, tier = 'pro' }) {
           <div className="space-y-2">
             {boats.map((b) => (
               <div key={b.id} className="rounded p-3" style={{ backgroundColor: C.bg, border: `1px solid ${C.border}` }}>
-                <p className="font-bold text-sm" style={{ color: C.text }}>{b.name}</p>
+                <p className="bb-title font-bold text-sm" style={{ color: C.text }}>{b.name}</p>
                 <p className="text-xs mt-0.5" style={{ color: C.muted }}>
                   Capt: {b.captain_name} · {b.angler1_name}{b.angler2_name ? ` · ${b.angler2_name}` : ''}
                 </p>
@@ -1207,7 +1207,7 @@ function CaptainTab({ orgId }) {
         <div className="fixed inset-0 z-50 flex items-end justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}>
           <div className="w-full max-w-md rounded-2xl overflow-y-auto max-h-[90vh] space-y-4 p-5" style={{ backgroundColor: C.card, border: `2px solid ${C.gold}` }}>
             <div className="text-center">
-              <p className="font-bold text-base uppercase tracking-widest mb-0.5" style={{ color: C.goldLight }}>Photo Required</p>
+              <p className="bb-title font-bold text-base uppercase tracking-widest mb-0.5" style={{ color: C.goldLight }}>Photo Required</p>
               <p className="text-xs" style={{ color: C.muted }}>
                 {pendingCatch.rounded.toFixed(1)}" → {pendingCatch.weight.toFixed(2)} lbs · {pendingCatch.anglerName}
               </p>
@@ -1305,7 +1305,7 @@ function CaptainTab({ orgId }) {
                     {length && !isNaN(paperRawLen) && paperRawLen > 0 && (
                       paperShortFish ? (
                         <div className="rounded px-3 py-2 text-center" style={{ backgroundColor: '#1a0000', border: `1px solid ${C.red}40` }}>
-                          <p className="font-bold text-sm" style={{ color: C.red }}>Short fish — does not count</p>
+                          <p className="bb-title font-bold text-sm" style={{ color: C.red }}>Short fish — does not count</p>
                         </div>
                       ) : paperResult ? (
                         <div className="rounded px-3 py-2.5 space-y-1" style={{ backgroundColor: C.card, border: `1px solid ${C.border}` }}>
@@ -1463,7 +1463,7 @@ function AnglerTab({ orgId }) {
     <div className="space-y-5">
       <ReceiptCard>
         <div className="flex items-center justify-between mb-1">
-          <p className="font-bold" style={{ color: C.text }}>{activeTournament.name}</p>
+          <p className="bb-title font-bold" style={{ color: C.text }}>{activeTournament.name}</p>
           <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ backgroundColor: C.muted, color: C.bg }}>ENDED</span>
         </div>
         <p className="text-xs mb-3" style={{ color: C.muted }}>{activeTournament.lake_name}</p>
@@ -1543,7 +1543,7 @@ function FeedTab({ orgId }) {
         </div>
         {activeTournament ? (
           <>
-            <p className="font-bold" style={{ color: C.goldLight }}>{activeTournament.name}</p>
+            <p className="bb-title font-bold" style={{ color: C.goldLight }}>{activeTournament.name}</p>
             <p className="text-xs mt-0.5" style={{ color: C.muted }}>{activeTournament.lake_name} · {activeTournament.date}</p>
           </>
         ) : (
@@ -2016,7 +2016,7 @@ export default function ClubDashboard() {
             className="w-full max-w-sm rounded-2xl p-6 space-y-4"
             style={{ backgroundColor: C.card, border: `1px solid ${C.border}` }}
           >
-            <p className="font-bold text-sm text-center" style={{ color: C.text }}>Leave Club?</p>
+            <p className="bb-title font-bold text-sm text-center" style={{ color: C.text }}>Leave Club?</p>
             <p className="text-xs text-center" style={{ color: C.muted }}>
               You will need to re-enter the Club Code to rejoin.
             </p>

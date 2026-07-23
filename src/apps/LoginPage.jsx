@@ -32,7 +32,7 @@ export default function LoginPage() {
           <img src="/logo.png" alt="Bass Boss" style={{ height: '32px' }} />
         </div>
         <div className="rounded-xl p-5" style={{ backgroundColor: C.card, border: `1px solid ${C.border}` }}>
-          <p className="font-bold text-base uppercase tracking-widest mb-4" style={{ color: C.goldLight }}>
+          <p className="bb-title font-bold text-base uppercase tracking-widest mb-4" style={{ color: C.goldLight }}>
             Director / Coach Sign In
           </p>
           <form onSubmit={handleSubmit} className="space-y-3">

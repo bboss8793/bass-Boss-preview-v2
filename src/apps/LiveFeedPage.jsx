@@ -179,7 +179,7 @@ export default function LiveFeedPage() {
       <main className="flex-1 px-4 py-4 mx-auto w-full max-w-md space-y-4">
         {/* Tournament header */}
         <div className="rounded-xl p-4" style={{ backgroundColor: C.card, border: `1px solid ${C.border}` }}>
-          <h1 className="text-lg font-bold leading-tight" style={{ color: C.text }}>{tournament.name || 'Tournament'}</h1>
+          <h1 className="bb-title text-lg font-bold leading-tight" style={{ color: C.text }}>{tournament.name || 'Tournament'}</h1>
           <p className="text-sm mt-1" style={{ color: C.muted }}>{tournament.lake_name || '—'}</p>
           <p className="text-xs mt-0.5" style={{ color: C.muted }}>
             {tournament.date ? new Date(tournament.date + 'T00:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Date TBD'}
@@ -209,11 +209,11 @@ export default function LiveFeedPage() {
         {bigBass && (
           <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${C.gold}50` }}>
             <div className="px-4 py-2 flex items-center justify-between" style={{ backgroundColor: `${C.gold}18` }}>
-              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C.gold }}>Big Bass</p>
+              <p className="bb-title text-xs font-bold uppercase tracking-widest" style={{ color: C.gold }}>Big Bass</p>
               <span className="text-sm font-bold font-mono" style={{ color: C.goldLight }}>{bigBass.weight.toFixed(2)} lbs</span>
             </div>
             <div className="px-4 py-2" style={{ backgroundColor: C.bg }}>
-              <p className="text-sm font-bold" style={{ color: C.text }}>{bigBass.angler}</p>
+              <p className="bb-title text-sm font-bold" style={{ color: C.text }}>{bigBass.angler}</p>
               {bigBass.boat && <p className="text-xs" style={{ color: C.muted }}>{bigBass.boat}</p>}
             </div>
           </div>
@@ -222,7 +222,7 @@ export default function LiveFeedPage() {
         {/* Leaderboard */}
         <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${C.border}` }}>
           <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: C.card }}>
-            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C.gold }}>Leaderboard</p>
+            <p className="bb-title text-xs font-bold uppercase tracking-widest" style={{ color: C.gold }}>Leaderboard</p>
             <span className="text-xs" style={{ color: C.muted }}>{standings.length} {standings.length === 1 ? 'boat' : 'boats'}</span>
           </div>
           {standings.length === 0 ? (
@@ -249,7 +249,7 @@ export default function LiveFeedPage() {
                     {i + 1}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold truncate" style={{ color: C.text }}>{s.label}</p>
+                    <p className="bb-title text-sm font-bold truncate" style={{ color: C.text }}>{s.label}</p>
                     {s.captain && <p className="text-xs truncate" style={{ color: C.muted }}>Capt: {s.captain}</p>}
                     <p className="text-xs mt-0.5" style={{ color: C.muted }}>
                       {s.count} {s.count === 1 ? 'fish' : 'fish'} · Big {s.bigFish.toFixed(2)} lbs

@@ -49,7 +49,7 @@ function PricingModal({ onClose }) {
 
         {/* Beta banner */}
         <div className="text-center px-6 pt-2 pb-5" style={{ borderBottom: `1px solid ${C.border}` }}>
-          <p className="text-3xl font-bold tracking-widest mb-1" style={{ color: C.gold }}>
+          <p className="bb-title text-3xl font-bold tracking-widest mb-1" style={{ color: C.gold }}>
             FREE DURING BETA
           </p>
           <p className="text-sm" style={{ color: C.muted }}>
@@ -96,7 +96,7 @@ function PricingModal({ onClose }) {
               highlight
               values={PLANS.map(p => (
                 <>
-                  <p className="text-sm font-bold" style={{ color: C.gold }}>{p.adultAnnual}</p>
+                  <p className="bb-title text-sm font-bold" style={{ color: C.gold }}>{p.adultAnnual}</p>
                   <p className="text-xs mt-0.5" style={{ color: C.muted }}>or {p.adultMonthly}</p>
                 </>
               ))}
@@ -108,7 +108,7 @@ function PricingModal({ onClose }) {
               highlight
               values={PLANS.map(p => (
                 <>
-                  <p className="text-sm font-bold" style={{ color: C.gold }}>{p.hsAnnual}</p>
+                  <p className="bb-title text-sm font-bold" style={{ color: C.gold }}>{p.hsAnnual}</p>
                   <p className="text-xs mt-0.5" style={{ color: C.muted }}>or {p.hsMonthly}</p>
                 </>
               ))}
@@ -316,7 +316,7 @@ export default function JoinFlow({ orgType }) {
                 </button>
               </p>
             )}
-            <p className="font-bold text-sm uppercase tracking-widest mt-2" style={{ color: C.goldLight }}>
+            <p className="bb-title font-bold text-sm uppercase tracking-widest mt-2" style={{ color: C.goldLight }}>
               {stepTitle}
             </p>
             {foundOrg && step !== 'signin' && (

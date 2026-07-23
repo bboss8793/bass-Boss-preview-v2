@@ -238,7 +238,7 @@ export default function RegisterPage() {
             <img src="/logo.png" alt="Bass Boss" style={{ height: '32px' }} />
           </div>
           <div className="mb-6">
-            <p className="text-2xl font-bold mb-1" style={{ color: C.goldLight }}>
+            <p className="bb-title text-2xl font-bold mb-1" style={{ color: C.goldLight }}>
               Welcome, {form.fullName.split(' ')[0]}!
             </p>
             <p className="text-sm" style={{ color: C.muted }}>
@@ -263,7 +263,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="mb-6">
-          <p className="text-2xl font-bold mb-1" style={{ color: C.goldLight }}>
+          <p className="bb-title text-2xl font-bold mb-1" style={{ color: C.goldLight }}>
             Director / Coach Registration
           </p>
           <p className="text-sm" style={{ color: C.muted }}>

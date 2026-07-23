@@ -1,18 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 const C = {
   bg: '#0a0900',
-  card: '#111008',
-  border: '#2a2000',
-  gold: '#C8A030',
-  goldLight: '#F0C84A',
-  goldDim: '#a08040',
-  text: '#F0E8C8',
-  muted: '#a08040',
+  dark: '#111008',
+  card: '#181508',
+  border: '#2a2200',
+  gold: '#c8a030',
+  goldLight: '#f0c84a',
+  text: '#f0e8c8',
+  muted: '#8a7850',
   green: '#00cc66',
-  red: '#cc3333',
+  red: '#c0392b',
 }
 
 const MEMBER_RANGES = ['1–10', '11–20', '21–35', '36+']
@@ -35,91 +35,104 @@ const STATS = [
 
 const AUDIENCES = [
   {
-    icon: '🎣',
     title: 'Adult Bass Clubs',
     desc: 'Paper tournament management, live leaderboards, length-to-weight conversion, Big Bass side pot, photo submission, and real-time conditions. The full suite for serious club directors.',
     tag: 'All 7 Features',
+    for: 'club',
   },
   {
-    icon: '🎓',
     title: 'High School Teams',
     desc: 'Built around the coach/captain/angler/parent model. Tournament lockout, verify codes, GPS safety system, parent live feed, weigh-in station, and season standings — all THSBA-ready.',
     tag: '5 Core Features',
+    for: 'team',
   },
   {
-    icon: '🚤',
     title: 'Boat Captains',
     desc: 'One device per boat. Log catches with photo and verify code. Cull mode fires automatically on the 6th fish. Emergency GPS and Need Help always visible at the bottom of the screen.',
     tag: 'Captain View',
+    for: 'both',
   },
   {
-    icon: '👨‍👩‍👧',
     title: 'Parents & Spectators',
     desc: 'No app download. No account. Share a link before launch and parents watch catches appear in real time from the ramp. Always know what\'s happening on the water.',
     tag: 'Live Feed',
+    for: 'team',
   },
 ]
 
 const FEATURES = [
   {
-    icon: '🏆',
     title: 'Tournament Format Setup',
     desc: 'Configure individual vs team scoring, Best 5 / Big Bass / All Legal Fish format, fish limit (3 or 5 fish), minimum legal length, and Big Bass side pot. All settings stored and enforced automatically across the tournament.',
     tag: 'Clubs & Teams',
+    for: 'both',
   },
   {
-    icon: '⏱',
     title: 'Tournament Timing & Countdown',
     desc: 'Live countdown timer synced to Supabase — not local device time. Automated banners at 2hr, 1hr, 30min, 15min, and 5min remaining. "Lines Out" message at zero.',
     tag: 'Clubs & Teams',
+    for: 'both',
   },
   {
-    icon: '📏',
     title: 'Length-to-Weight Conversion',
     desc: 'Full official Texas chart: 14" through 28" in 0.5" increments. Angler enters length, app converts to weight. Hard minimum enforced per tournament settings.',
     tag: 'Clubs Only',
+    for: 'club',
   },
   {
-    icon: '📸',
     title: 'Photo Submission Workflow',
     desc: 'Angler uploads photo after entering fish data. Pre-upload checklist enforced. Weigh master review queue — approve or reject with reason. Only approved catches count on leaderboard.',
     tag: 'Clubs & Teams',
+    for: 'both',
   },
   {
-    icon: '📋',
     title: 'Proxy Catch Entry',
     desc: 'One angler logs catches for their boat partner from a single phone. Catches attributed correctly in Supabase regardless of who entered them. Leaderboard reflects correct angler throughout.',
     tag: 'Clubs & Teams',
+    for: 'both',
   },
   {
-    icon: '🌤',
     title: 'Weather & Conditions',
     desc: 'Wind, temperature, barometric pressure with fishing implication, solunar activity, and pool elevation from USGS — 20+ Texas lakes on correct reservoir stations. Updates every 15 minutes.',
     tag: 'Clubs & Teams',
+    for: 'both',
   },
   {
-    icon: '💰',
     title: 'Big Bass Side Pot',
     desc: 'Tracks heaviest single fish per angler when Big Bass is enabled. Separate leaderboard section updates in real time. Tie handling included. Winner highlighted on final results screen.',
     tag: 'Clubs Only',
+    for: 'club',
   },
   {
-    icon: '🔴',
     title: 'CullMode — Automatic',
     desc: 'Supports 3-fish and 5-fish tournament formats. Automatically identifies the lightest fish to cull when the limit is exceeded. Red CULL flag updates every time a new catch comes in. Limit is set at tournament creation — CullMode adjusts dynamically. Audit log preserved.',
     tag: 'Clubs & Teams',
+    for: 'both',
   },
   {
-    icon: '🌙',
     title: 'Solunar Activity',
     desc: 'Sunrise/sunset times and peak feeding periods calculated for your active lake. Major and minor solunar periods displayed with intensity indicators. Available on all three app tabs.',
     tag: 'Clubs & Teams',
+    for: 'both',
+  },
+  {
+    title: 'Emergency GPS',
+    desc: 'Captain taps the red button. Real device GPS coordinates fire instantly to the coach dashboard with a one-tap Maps link. A pulsing alert takes over the screen until acknowledged. Built for on-water safety.',
+    tag: 'Teams Only',
+    for: 'team',
+  },
+  {
+    title: 'Parent Live Feed',
+    desc: 'No app download. No account. Share a link before launch and parents watch catches appear in real time from the ramp. Always know what\'s happening on the water.',
+    tag: 'Teams Only',
+    for: 'team',
   },
 ]
 
 const SAFETY_CARDS = [
   {
-    level: '🔴 Emergency',
+    level: 'Emergency',
+    dotColor: '#c0392b',
     title: 'EMERGENCY GPS',
     desc: 'Captain taps the red button. Real device GPS coordinates fire instantly to the director/coach dashboard with a one-tap Maps link. A pulsing alert takes over the screen until acknowledged.',
     bullets: [
@@ -130,7 +143,8 @@ const SAFETY_CARDS = [
     ],
   },
   {
-    level: '🟡 Non-Emergency',
+    level: 'Non-Emergency',
+    dotColor: '#c8a030',
     title: 'NEED HELP',
     desc: 'Engine trouble. Out of fuel. Dead battery. Captain taps the gold button, selects a reason, adds a note. GPS sends to the dashboard. Non-emergency — no panic, just communication.',
     bullets: [
@@ -169,7 +183,9 @@ const PLANS = [
     price: '$249',
     period: '/year — Adult Club',
     alt: 'or $25/month, billed monthly',
-    hs: 'High School: $299/yr or $30/mo',
+    hsPrice: '$299',
+    hsPeriod: '/year — High School',
+    hsAlt: 'or $30/month, billed monthly',
     limits: ['Up to 20 anglers', '6 tournaments per year'],
     features: [
       'All core tournament features',
@@ -187,7 +203,9 @@ const PLANS = [
     price: '$349',
     period: '/year — Adult Club',
     alt: 'or $35/month, billed monthly',
-    hs: 'High School: $399/yr or $40/mo',
+    hsPrice: '$399',
+    hsPeriod: '/year — High School',
+    hsAlt: 'or $40/month, billed monthly',
     limits: ['Up to 35 anglers', 'Unlimited tournaments'],
     features: [
       'Everything in Starter',
@@ -205,7 +223,9 @@ const PLANS = [
     price: '$449',
     period: '/year — Adult Club',
     alt: 'or $45/month, billed monthly',
-    hs: 'High School: $499/yr or $50/mo',
+    hsPrice: '$499',
+    hsPeriod: '/year — High School',
+    hsAlt: 'or $50/month, billed monthly',
     limits: ['Unlimited anglers', 'Unlimited tournaments'],
     features: [
       'Everything in Standard',
@@ -352,7 +372,7 @@ function RequestModal({ onClose }) {
           style={{ backgroundColor: C.card, borderBottom: `1px solid ${C.border}` }}
         >
           <div>
-            <p className="font-bold text-base uppercase tracking-widest" style={{ color: C.goldLight }}>
+            <p className="bb-eyebrow text-base" style={{ color: C.gold }}>
               Request Beta Access
             </p>
             <p className="text-xs mt-0.5" style={{ color: C.muted }}>
@@ -371,8 +391,7 @@ function RequestModal({ onClose }) {
         <div className="px-5 py-5">
           {done ? (
             <div className="text-center py-8 space-y-4">
-              <div className="text-5xl">🎣</div>
-              <p className="font-bold text-xl" style={{ color: C.goldLight }}>You're on the list!</p>
+              <p className="bb-title text-xl" style={{ color: C.gold, fontSize: '28px', letterSpacing: '2px' }}>You're on the list!</p>
               <p className="text-sm leading-relaxed" style={{ color: C.text }}>
                 Thanks! We'll reach out within 48 hours to get you set up.
               </p>
@@ -569,7 +588,7 @@ function FaqItem({ q, a }) {
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left"
       >
-        <span className="font-bold text-sm" style={{ color: C.goldLight }}>{q}</span>
+        <span className="bb-eyebrow text-sm" style={{ color: C.text }}>{q}</span>
         <span
           className="flex-shrink-0 text-xl transition-transform"
           style={{ color: C.gold, transform: open ? 'rotate(45deg)' : 'none' }}
@@ -588,13 +607,55 @@ function FaqItem({ q, a }) {
 
 export default function SalesPage() {
   const [modalOpen, setModalOpen] = useState(false)
+  const [audience, setAudienceState] = useState('general')
+  const [pricingMode, setPricingMode] = useState('adult')
+  const [audienceEngaged, setAudienceEngaged] = useState(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const forParam = params.get('for')
+    if (forParam === 'highschool') {
+      setAudienceState('highschool')
+      setPricingMode('highschool')
+      setAudienceEngaged(true)
+    } else if (forParam === 'adult') {
+      setAudienceState('adult')
+      setPricingMode('adult')
+      setAudienceEngaged(true)
+    }
+  }, [])
+
+  function setAudience(a) {
+    setAudienceState(a)
+    setAudienceEngaged(true)
+    if (a === 'highschool') setPricingMode('highschool')
+    else setPricingMode('adult')
+    const url = new URL(window.location)
+    if (a === 'general') url.searchParams.delete('for')
+    else url.searchParams.set('for', a)
+    window.history.replaceState({}, '', url)
+  }
+
+  const filteredFeatures = FEATURES.filter((f) => {
+    if (audience === 'general') return true
+    if (audience === 'highschool') return f.for !== 'club'
+    if (audience === 'adult') return f.for !== 'team'
+    return true
+  })
+
+  const filteredAudiences = AUDIENCES.filter((a) => {
+    if (audience === 'general') return true
+    if (audience === 'highschool') return a.for !== 'club'
+    if (audience === 'adult') return a.for !== 'team'
+    return true
+  })
 
   function scrollTo(id) {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: C.bg, color: C.text }}>
+    <div className="min-h-screen" style={{ color: C.text }}>
 
       {/* ── Nav Bar ─────────────────────────────────────── */}
       <nav
@@ -602,9 +663,9 @@ export default function SalesPage() {
         style={{ backgroundColor: C.bg, borderBottom: `1px solid ${C.border}` }}
       >
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <img src="/Logo-crest.png" alt="" style={{ height: '32px', width: 'auto' }} />
-            <span className="font-bold text-sm uppercase tracking-widest hidden sm:block" style={{ color: C.goldLight }}>
+          <div className="flex items-center gap-3 flex-shrink-0 pr-2">
+            <img src="/Logo-crest.png" alt="" style={{ height: '48px', width: 'auto' }} />
+            <span className="bb-title hidden sm:block" style={{ color: C.gold, fontSize: '34px', letterSpacing: '2px' }}>
               Bass Boss
             </span>
           </div>
@@ -613,24 +674,33 @@ export default function SalesPage() {
               <button
                 key={l.label}
                 onClick={() => scrollTo(l.href.slice(1))}
-                className="text-xs font-bold uppercase tracking-wider transition-colors hover:opacity-80"
-                style={{ color: C.muted }}
+                className="bb-eyebrow text-xs transition-colors"
+                style={{ color: C.text }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = C.gold)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = C.text)}
               >
                 {l.label}
               </button>
             ))}
           </div>
+          <select
+            value={audience}
+            onChange={(e) => setAudience(e.target.value)}
+            className="bb-eyebrow text-xs rounded px-2 py-1.5 outline-none cursor-pointer"
+            style={{
+              backgroundColor: C.bg,
+              color: C.text,
+              border: `1px solid ${C.border}`,
+            }}
+          >
+            <option value="general">General</option>
+            <option value="highschool">High School</option>
+            <option value="adult">Adult Club</option>
+          </select>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Link
-              to="/app"
-              className="px-3 py-2 rounded text-xs font-bold uppercase tracking-wider transition-opacity hover:opacity-80"
-              style={{ color: C.goldLight, border: `1px solid ${C.gold}` }}
-            >
-              Launch the App
-            </Link>
             <button
               onClick={() => setModalOpen(true)}
-              className="px-3 py-2 rounded text-xs font-bold uppercase tracking-wider transition-opacity hover:opacity-90"
+              className="bb-eyebrow px-5 py-2.5 rounded text-sm font-bold uppercase tracking-widest transition-transform active:scale-95 hover:brightness-110"
               style={{ backgroundColor: C.gold, color: C.bg }}
             >
               Request Access
@@ -639,37 +709,74 @@ export default function SalesPage() {
         </div>
       </nav>
 
+      {/* ── Install Banner ─────────────────────────────────── */}
+      <div
+        className="px-6 py-2.5 flex items-center justify-center gap-4 flex-wrap text-center"
+        style={{ backgroundColor: C.gold }}
+      >
+        <span className="text-sm font-bold" style={{ color: C.bg }}>
+          Ready to try it? Add Bass Boss to your home screen in 30 seconds.
+        </span>
+        <button
+          onClick={() => scrollTo('install')}
+          className="text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded"
+          style={{ backgroundColor: C.bg, color: C.gold, whiteSpace: 'nowrap' }}
+        >
+          How to Install →
+        </button>
+        <Link
+          to="/app"
+          className="text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded"
+          style={{ color: C.bg, border: `1px solid ${C.bg}`, whiteSpace: 'nowrap' }}
+        >
+          Launch the App →
+        </Link>
+      </div>
+
       {/* ── Hero ────────────────────────────────────────── */}
-      <section className="text-center px-5 pt-12 pb-10">
+      <section
+        className="text-center px-5 pt-20 pb-16 relative overflow-hidden"
+        style={{ minHeight: '92vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(200,160,48,.08) 0%, transparent 70%)' }}
+        />
+        <div className="relative w-full">
         <p
-          className="inline-block text-xs uppercase tracking-widest font-bold px-4 py-1.5 rounded-full mb-6"
-          style={{ color: C.gold, border: `1px solid ${C.gold}50`, backgroundColor: `${C.gold}10` }}
+          className="bb-eyebrow inline-block text-xs px-4 py-1.5 rounded-full mb-8"
+          style={{ color: C.gold, border: `1px solid ${C.border}` }}
         >
           Beta Now Open — Free During Beta
         </p>
         <h1
-          className="text-3xl sm:text-5xl font-bold leading-tight mb-5 max-w-xl mx-auto"
-          style={{ color: C.goldLight }}
+          className="bb-title mb-2"
+          style={{
+            color: C.text,
+            fontSize: 'clamp(64px, 10vw, 120px)',
+            letterSpacing: '4px',
+            lineHeight: '.95',
+          }}
         >
-          RUN YOUR TOURNAMENT LIKE A BOSS.
+          <span style={{ color: C.text, fontFamily: 'inherit' }}>RUN YOUR</span><br /><span style={{ color: C.gold, fontFamily: 'inherit' }}>TOURNAMENT</span><br /><span style={{ color: C.text, fontFamily: 'inherit' }}>LIKE A </span><span style={{ color: C.gold, fontFamily: 'inherit' }}>BOSS.</span>
         </h1>
-        <p className="text-sm leading-relaxed max-w-md mx-auto mb-7" style={{ color: C.muted }}>
+        <p className="text-sm leading-relaxed max-w-md mx-auto mb-10 mt-5" style={{ color: C.muted, fontSize: 'clamp(16px, 2.5vw, 22px)' }}>
           Tournament management for high school bass fishing teams and adult bass clubs.
           Live leaderboards, GPS safety, photo verification, and real-time conditions —
           all from your phone.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
           <button
             onClick={() => setModalOpen(true)}
             className="px-8 py-3.5 rounded font-bold text-sm uppercase tracking-widest transition-transform active:scale-95"
-            style={{ backgroundColor: C.gold, color: C.bg, boxShadow: `0 0 28px ${C.gold}50` }}
+            style={{ backgroundColor: C.gold, color: C.bg }}
           >
             Request Beta Access
           </button>
           <button
             onClick={() => scrollTo('features')}
             className="px-8 py-3.5 rounded font-bold text-sm uppercase tracking-widest transition-colors"
-            style={{ color: C.goldLight, border: `1px solid ${C.gold}` }}
+            style={{ color: C.text, border: `1px solid ${C.border}` }}
           >
             See What's Inside
           </button>
@@ -677,29 +784,87 @@ export default function SalesPage() {
         <p className="text-xs" style={{ color: C.muted }}>
           No app store required — runs in your browser. Add to home screen for the full experience.
         </p>
+        </div>
       </section>
 
       {/* ── Stats Bar ───────────────────────────────────── */}
       <section
         className="px-5 py-8"
-        style={{ backgroundColor: C.card, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}
+        style={{ backgroundColor: C.dark, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}
       >
         <div className="max-w-2xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
           {STATS.map((s) => (
             <div key={s.label}>
-              <p className="text-3xl font-bold mb-1" style={{ color: C.goldLight }}>{s.value}</p>
-              <p className="text-xs uppercase tracking-wider" style={{ color: C.muted }}>{s.label}</p>
+              <p className="bb-title mb-1" style={{ color: C.gold, fontSize: '42px', letterSpacing: '2px', lineHeight: '1' }}>{s.value}</p>
+              <p className="bb-eyebrow text-xs" style={{ color: C.muted }}>{s.label}</p>
             </div>
           ))}
         </div>
       </section>
 
+      {/* ── Audience Selector ─────────────────────────────── */}
+      <section className="max-w-2xl mx-auto px-5 py-12">
+        <div
+          className={`rounded-2xl p-6 sm:p-8 ${!audienceEngaged ? 'audience-pulse' : ''}`}
+          style={{
+            backgroundColor: C.card,
+            border: `1px solid ${C.border}`,
+          }}
+        >
+        <p className="bb-eyebrow text-xs text-center mb-4" style={{ color: C.gold }}>
+          Who's using Bass Boss?
+        </p>
+        <h2 className="bb-title text-center mb-5" style={{ color: C.text, fontSize: 'clamp(40px, 6vw, 64px)', letterSpacing: '2px', lineHeight: '1' }}>
+          PICK YOUR PLATFORM.
+        </h2>
+        <p className="text-sm leading-relaxed text-center max-w-md mx-auto mb-8" style={{ color: C.muted }}>
+          Filter the features, safety, and pricing to match your program.
+        </p>
+        <div className="flex gap-3 justify-center mb-4">
+          <button
+            onClick={() => setAudience('highschool')}
+            className="flex-1 max-w-xs py-3 rounded font-bold text-sm uppercase tracking-widest transition-all"
+            style={{
+              backgroundColor: audience === 'highschool' ? C.gold : 'transparent',
+              color: audience === 'highschool' ? C.bg : C.text,
+              border: `1px solid ${audience === 'highschool' ? C.gold : C.border}`,
+            }}
+          >
+            High School Team
+          </button>
+          <button
+            onClick={() => setAudience('adult')}
+            className="flex-1 max-w-xs py-3 rounded font-bold text-sm uppercase tracking-widest transition-all"
+            style={{
+              backgroundColor: audience === 'adult' ? C.gold : 'transparent',
+              color: audience === 'adult' ? C.bg : C.text,
+              border: `1px solid ${audience === 'adult' ? C.gold : C.border}`,
+            }}
+          >
+            Adult Club
+          </button>
+        </div>
+        <div className="text-center">
+          <button
+            onClick={() => setAudience('general')}
+            className="text-xs underline transition-opacity hover:opacity-70"
+            style={{
+              color: audience === 'general' ? C.gold : C.muted,
+              fontWeight: audience === 'general' ? 700 : 400,
+            }}
+          >
+            Just browsing? See everything ↓
+          </button>
+        </div>
+        </div>
+      </section>
+
       {/* ── Built For Your Tournament ───────────────────── */}
       <section id="who" className="max-w-2xl mx-auto px-5 py-12">
-        <p className="text-xs uppercase tracking-widest font-bold text-center mb-2" style={{ color: C.gold }}>
+        <p className="bb-eyebrow text-xs text-center mb-4" style={{ color: C.gold }}>
           Two Platforms. One App.
         </p>
-        <h2 className="text-2xl sm:text-3xl font-bold text-center mb-3" style={{ color: C.goldLight }}>
+        <h2 className="bb-title text-center mb-5" style={{ color: C.text, fontSize: 'clamp(40px, 6vw, 64px)', letterSpacing: '2px', lineHeight: '1' }}>
           BUILT FOR YOUR TOURNAMENT.
         </h2>
         <p className="text-sm leading-relaxed text-center max-w-md mx-auto mb-8" style={{ color: C.muted }}>
@@ -707,14 +872,13 @@ export default function SalesPage() {
           platform for adult bass clubs, and a high school team platform built around THSBA rules.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {AUDIENCES.map((a) => (
+          {filteredAudiences.map((a) => (
             <div
               key={a.title}
               className="rounded-xl p-5"
               style={{ backgroundColor: C.card, border: `1px solid ${C.border}` }}
             >
-              <div className="text-3xl mb-3">{a.icon}</div>
-              <p className="font-bold text-sm mb-2" style={{ color: C.goldLight }}>{a.title}</p>
+              <p className="bb-title text-sm mb-2" style={{ color: C.gold, fontSize: '28px', letterSpacing: '2px' }}>{a.title}</p>
               <p className="text-xs leading-relaxed mb-3" style={{ color: C.text }}>{a.desc}</p>
               <span
                 className="inline-block text-xs font-bold uppercase tracking-wider px-3 py-1 rounded"
@@ -728,12 +892,12 @@ export default function SalesPage() {
       </section>
 
       {/* ── Full Feature Suite ──────────────────────────── */}
-      <section id="features" className="px-5 py-12" style={{ backgroundColor: C.card, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+      <section id="features" className="px-5 py-12" style={{ backgroundColor: C.dark, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-2xl mx-auto">
-          <p className="text-xs uppercase tracking-widest font-bold text-center mb-2" style={{ color: C.gold }}>
+          <p className="bb-eyebrow text-xs text-center mb-4" style={{ color: C.gold }}>
             Everything You Need
           </p>
-          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-3" style={{ color: C.goldLight }}>
+          <h2 className="bb-title text-center mb-5" style={{ color: C.text, fontSize: 'clamp(40px, 6vw, 64px)', letterSpacing: '2px', lineHeight: '1' }}>
             THE FULL FEATURE SUITE.
           </h2>
           <p className="text-sm leading-relaxed text-center max-w-md mx-auto mb-8" style={{ color: C.muted }}>
@@ -741,30 +905,24 @@ export default function SalesPage() {
             problem that paper and group texts can't.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {FEATURES.map((f) => (
+            {filteredFeatures.map((f) => (
               <div
                 key={f.title}
                 className="rounded-xl p-5"
-                style={{ backgroundColor: C.bg, border: `1px solid ${C.border}` }}
+                style={{ backgroundColor: C.card, border: `1px solid ${C.border}` }}
               >
-                <div className="flex items-start gap-3 mb-2">
-                  <span className="text-2xl flex-shrink-0 mt-0.5">{f.icon}</span>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <p className="font-bold text-sm" style={{ color: C.goldLight }}>{f.title}</p>
-                      <span
-                        className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded"
-                        style={{
-                          color: f.tag === 'Clubs Only' ? C.goldDim : C.gold,
-                          border: `1px solid ${f.tag === 'Clubs Only' ? C.goldDim : C.gold}40`,
-                        }}
-                      >
-                        {f.tag}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-xs leading-relaxed" style={{ color: C.muted }}>{f.desc}</p>
+                <p className="bb-title text-sm mb-2" style={{ color: C.text, fontSize: '20px', letterSpacing: '1px' }}>{f.title}</p>
+                <p className="text-xs leading-relaxed mb-3" style={{ color: C.muted }}>{f.desc}</p>
+                <span
+                  className="inline-block text-xs font-bold uppercase tracking-wider px-3 py-1 rounded"
+                  style={{
+                    color: C.gold,
+                    border: `1px solid ${C.gold}40`,
+                    backgroundColor: `${C.gold}10`,
+                  }}
+                >
+                  {f.tag}
+                </span>
               </div>
             ))}
           </div>
@@ -772,11 +930,12 @@ export default function SalesPage() {
       </section>
 
       {/* ── GPS Safety ──────────────────────────────────── */}
+      {audience !== 'adult' && (
       <section id="safety" className="max-w-2xl mx-auto px-5 py-12">
-        <p className="text-xs uppercase tracking-widest font-bold text-center mb-2" style={{ color: C.gold }}>
+        <p className="bb-eyebrow text-xs text-center mb-4" style={{ color: C.gold }}>
           On-Water Safety
         </p>
-        <h2 className="text-2xl sm:text-3xl font-bold text-center mb-3" style={{ color: C.goldLight }}>
+        <h2 className="bb-title text-center mb-5" style={{ color: C.text, fontSize: 'clamp(40px, 6vw, 64px)', letterSpacing: '2px', lineHeight: '1' }}>
           THE ONLY APP WITH A GPS SAFETY SYSTEM.
         </h2>
         <p className="text-sm leading-relaxed text-center max-w-md mx-auto mb-8" style={{ color: C.muted }}>
@@ -790,15 +949,15 @@ export default function SalesPage() {
               className="rounded-xl p-5"
               style={{ backgroundColor: C.card, border: `1px solid ${C.border}` }}
             >
-              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: C.gold }}>
+              <p className="bb-eyebrow text-xs mb-2 flex items-center gap-2" style={{ color: s.dotColor }}>
+                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: s.dotColor, flexShrink: 0 }} />
                 {s.level}
               </p>
-              <p className="font-bold text-base mb-2" style={{ color: C.goldLight }}>{s.title}</p>
+              <p className="bb-title text-base mb-4" style={{ color: C.gold, fontSize: '36px', letterSpacing: '2px' }}>{s.title}</p>
               <p className="text-xs leading-relaxed mb-4" style={{ color: C.text }}>{s.desc}</p>
               <ul className="space-y-2">
                 {s.bullets.map((b) => (
                   <li key={b} className="flex items-start gap-2 text-xs" style={{ color: C.text }}>
-                    <span className="flex-shrink-0 mt-0.5 font-bold" style={{ color: C.gold }}>✓</span>
                     {b}
                   </li>
                 ))}
@@ -816,21 +975,22 @@ export default function SalesPage() {
             completely different conversation than one who can't."
           </p>
           <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C.gold }}>
-            Bass Boss · Built for the Bite · Texas
+            Bass Boss · Built for the Bite
           </p>
         </blockquote>
       </section>
+      )}
 
       {/* ── Clubs vs Teams ───────────────────────────────── */}
       <section
         className="px-5 py-12"
-        style={{ backgroundColor: C.card, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}
+        style={{ backgroundColor: C.dark, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}
       >
         <div className="max-w-2xl mx-auto">
-          <p className="text-xs uppercase tracking-widest font-bold text-center mb-2" style={{ color: C.gold }}>
+          <p className="bb-eyebrow text-xs text-center mb-4" style={{ color: C.gold }}>
             Platform Comparison
           </p>
-          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-3" style={{ color: C.goldLight }}>
+          <h2 className="bb-title text-center mb-5" style={{ color: C.text, fontSize: 'clamp(40px, 6vw, 64px)', letterSpacing: '2px', lineHeight: '1' }}>
             CLUBS vs TEAMS.
           </h2>
           <p className="text-sm leading-relaxed text-center max-w-md mx-auto mb-8" style={{ color: C.muted }}>
@@ -842,7 +1002,7 @@ export default function SalesPage() {
               className="rounded-xl p-5"
               style={{ backgroundColor: C.bg, border: `1px solid ${C.border}` }}
             >
-              <p className="font-bold text-sm mb-2" style={{ color: C.goldLight }}>ADULT CLUBS</p>
+              <p className="bb-title text-sm mb-2" style={{ color: C.gold, fontSize: '32px', letterSpacing: '2px' }}>ADULT CLUBS</p>
               <p className="text-xs leading-relaxed mb-4" style={{ color: C.muted }}>
                 Full suite. Paper tournament tools, Big Bass side pot, length-to-weight
                 conversion, and everything else serious club directors need.
@@ -850,7 +1010,6 @@ export default function SalesPage() {
               <ul className="space-y-2">
                 {CLUB_FEATURES.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-xs" style={{ color: C.text }}>
-                    <span className="flex-shrink-0 mt-0.5 font-bold" style={{ color: C.gold }}>✓</span>
                     {f}
                   </li>
                 ))}
@@ -860,7 +1019,7 @@ export default function SalesPage() {
               className="rounded-xl p-5"
               style={{ backgroundColor: C.bg, border: `1px solid ${C.border}` }}
             >
-              <p className="font-bold text-sm mb-2" style={{ color: C.goldLight }}>HIGH SCHOOL TEAMS</p>
+              <p className="bb-title text-sm mb-2" style={{ color: C.gold, fontSize: '32px', letterSpacing: '2px' }}>HIGH SCHOOL TEAMS</p>
               <p className="text-xs leading-relaxed mb-4" style={{ color: C.muted }}>
                 Built around THSBA rules. Coach/captain/angler/parent model with GPS safety,
                 verify codes, parent live feed, and season standings.
@@ -868,7 +1027,6 @@ export default function SalesPage() {
               <ul className="space-y-2">
                 {TEAM_FEATURES.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-xs" style={{ color: C.text }}>
-                    <span className="flex-shrink-0 mt-0.5 font-bold" style={{ color: C.gold }}>✓</span>
                     {f}
                   </li>
                 ))}
@@ -880,16 +1038,40 @@ export default function SalesPage() {
 
       {/* ── Pricing ─────────────────────────────────────── */}
       <section id="pricing" className="max-w-2xl mx-auto px-5 py-12">
-        <p className="text-xs uppercase tracking-widest font-bold text-center mb-2" style={{ color: C.gold }}>
+        <p className="bb-eyebrow text-xs text-center mb-4" style={{ color: C.gold }}>
           Simple Pricing
         </p>
-        <h2 className="text-2xl sm:text-3xl font-bold text-center mb-3" style={{ color: C.goldLight }}>
+        <h2 className="bb-title text-center mb-5" style={{ color: C.text, fontSize: 'clamp(40px, 6vw, 64px)', letterSpacing: '2px', lineHeight: '1' }}>
           START FREE. UPGRADE WHEN READY.
         </h2>
-        <p className="text-sm leading-relaxed text-center max-w-md mx-auto mb-8" style={{ color: C.muted }}>
+        <p className="text-sm leading-relaxed text-center max-w-md mx-auto mb-6" style={{ color: C.muted }}>
           Beta organizations get Pro tier free through end of 2026. After beta, plans start at
           $249/year. Save 20% with annual billing.
         </p>
+        <div className="flex justify-center gap-3 mb-8">
+          <button
+            onClick={() => setPricingMode('adult')}
+            className="px-6 py-2 rounded font-bold text-xs uppercase tracking-widest transition-all"
+            style={{
+              backgroundColor: pricingMode === 'adult' ? C.gold : 'transparent',
+              color: pricingMode === 'adult' ? C.bg : C.text,
+              border: `1px solid ${pricingMode === 'adult' ? C.gold : C.border}`,
+            }}
+          >
+            Adult Club
+          </button>
+          <button
+            onClick={() => setPricingMode('highschool')}
+            className="px-6 py-2 rounded font-bold text-xs uppercase tracking-widest transition-all"
+            style={{
+              backgroundColor: pricingMode === 'highschool' ? C.gold : 'transparent',
+              color: pricingMode === 'highschool' ? C.bg : C.text,
+              border: `1px solid ${pricingMode === 'highschool' ? C.gold : C.border}`,
+            }}
+          >
+            High School Team
+          </button>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {PLANS.map((p) => (
             <div
@@ -910,13 +1092,12 @@ export default function SalesPage() {
                 </div>
               )}
               <div className="p-5 flex flex-col flex-1">
-                <p className="font-bold text-base mb-0.5" style={{ color: C.goldLight }}>{p.name}</p>
+                <p className="bb-title text-base mb-0.5" style={{ color: C.text, fontSize: '32px', letterSpacing: '2px' }}>{p.name}</p>
                 <p className="text-xs mb-3" style={{ color: C.muted }}>{p.sub}</p>
                 <p className="text-2xl font-bold mb-0.5" style={{ color: C.goldLight }}>
-                  {p.price}<span className="text-sm font-normal" style={{ color: C.muted }}>{p.period}</span>
+                  {pricingMode === 'adult' ? p.price : p.hsPrice}<span className="text-sm font-normal" style={{ color: C.muted }}>{pricingMode === 'adult' ? p.period : p.hsPeriod}</span>
                 </p>
-                <p className="text-xs mb-1" style={{ color: C.muted }}>{p.alt}</p>
-                <p className="text-xs font-bold mb-4" style={{ color: C.green }}>{p.hs}</p>
+                <p className="text-xs mb-4" style={{ color: C.muted }}>{pricingMode === 'adult' ? p.alt : p.hsAlt}</p>
                 <div className="space-y-1.5 mb-4">
                   {p.limits.map((l) => (
                     <p key={l} className="text-xs font-bold" style={{ color: C.text }}>{l}</p>
@@ -925,7 +1106,6 @@ export default function SalesPage() {
                 <ul className="space-y-2 mb-5 flex-1">
                   {p.features.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-xs" style={{ color: C.text }}>
-                      <span className="flex-shrink-0 mt-0.5 font-bold" style={{ color: C.gold }}>✓</span>
                       {f}
                     </li>
                   ))}
@@ -955,13 +1135,13 @@ export default function SalesPage() {
       <section
         id="install"
         className="px-5 py-12"
-        style={{ backgroundColor: C.card, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}
+        style={{ backgroundColor: C.dark, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}
       >
         <div className="max-w-2xl mx-auto">
-          <p className="text-xs uppercase tracking-widest font-bold text-center mb-2" style={{ color: C.gold }}>
+          <p className="bb-eyebrow text-xs text-center mb-4" style={{ color: C.gold }}>
             No App Store Required
           </p>
-          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-3" style={{ color: C.goldLight }}>
+          <h2 className="bb-title text-center mb-5" style={{ color: C.text, fontSize: 'clamp(40px, 6vw, 64px)', letterSpacing: '2px', lineHeight: '1' }}>
             ADD IT TO YOUR HOME SCREEN IN 30 SECONDS.
           </h2>
           <p className="text-sm leading-relaxed text-center max-w-md mx-auto mb-8" style={{ color: C.muted }}>
@@ -970,7 +1150,7 @@ export default function SalesPage() {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="rounded-xl p-5" style={{ backgroundColor: C.bg, border: `1px solid ${C.border}` }}>
-              <p className="font-bold text-sm mb-4" style={{ color: C.goldLight }}>🍎 iPhone / Safari</p>
+              <p className="bb-title text-sm mb-4" style={{ color: C.gold, fontSize: '22px', letterSpacing: '2px' }}>iPhone / Safari</p>
               <ol className="space-y-3">
                 {INSTALL_IPHONE.map((step, i) => (
                   <li key={i} className="flex gap-3 text-xs leading-relaxed" style={{ color: C.text }}>
@@ -986,7 +1166,7 @@ export default function SalesPage() {
               </ol>
             </div>
             <div className="rounded-xl p-5" style={{ backgroundColor: C.bg, border: `1px solid ${C.border}` }}>
-              <p className="font-bold text-sm mb-4" style={{ color: C.goldLight }}>🤖 Android / Chrome</p>
+              <p className="bb-title text-sm mb-4" style={{ color: C.gold, fontSize: '22px', letterSpacing: '2px' }}>Android / Chrome</p>
               <ol className="space-y-3">
                 {INSTALL_ANDROID.map((step, i) => (
                   <li key={i} className="flex gap-3 text-xs leading-relaxed" style={{ color: C.text }}>
@@ -1011,10 +1191,10 @@ export default function SalesPage() {
 
       {/* ── FAQ ─────────────────────────────────────────── */}
       <section id="faq" className="max-w-2xl mx-auto px-5 py-12">
-        <p className="text-xs uppercase tracking-widest font-bold text-center mb-2" style={{ color: C.gold }}>
+        <p className="bb-eyebrow text-xs text-center mb-4" style={{ color: C.gold }}>
           Got Questions
         </p>
-        <h2 className="text-2xl sm:text-3xl font-bold text-center mb-3" style={{ color: C.goldLight }}>
+        <h2 className="bb-title text-center mb-5" style={{ color: C.text, fontSize: 'clamp(40px, 6vw, 64px)', letterSpacing: '2px', lineHeight: '1' }}>
           FREQUENTLY ASKED.
         </h2>
         <p className="text-sm leading-relaxed text-center max-w-md mx-auto mb-8" style={{ color: C.muted }}>
@@ -1030,11 +1210,12 @@ export default function SalesPage() {
       {/* ── Final CTA + Form ────────────────────────────── */}
       <section
         id="access"
-        className="px-5 py-12"
-        style={{ backgroundColor: C.card, borderTop: `1px solid ${C.border}` }}
+        className="px-5 py-16 relative overflow-hidden"
+        style={{ backgroundColor: C.bg, borderTop: `1px solid ${C.border}` }}
       >
-        <div className="max-w-lg mx-auto text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-3" style={{ color: C.goldLight }}>
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 60% 80% at 50% 50%, rgba(200,160,48,.06) 0%, transparent 70%)' }} />
+        <div className="max-w-lg mx-auto text-center relative">
+          <h2 className="bb-title mb-4" style={{ color: C.text, fontSize: 'clamp(48px, 8vw, 96px)', letterSpacing: '3px', lineHeight: '1' }}>
             BE FIRST ON THE WATER.
           </h2>
           <p className="text-sm leading-relaxed mb-6" style={{ color: C.muted }}>
@@ -1055,11 +1236,11 @@ export default function SalesPage() {
       </section>
 
       {/* ── Footer ──────────────────────────────────────── */}
-      <footer className="px-5 py-8" style={{ backgroundColor: C.bg, borderTop: `1px solid ${C.border}` }}>
+      <footer className="px-5 py-8" style={{ backgroundColor: C.dark, borderTop: `1px solid ${C.border}` }}>
         <div className="max-w-2xl mx-auto text-center">
           <div className="flex justify-center items-center gap-2 mb-4">
             <img src="/Logo-crest.png" alt="" style={{ height: '32px', width: 'auto' }} />
-            <span className="font-bold text-sm uppercase tracking-widest" style={{ color: C.goldLight }}>
+            <span className="bb-title" style={{ color: C.gold, fontSize: '24px', letterSpacing: '3px' }}>
               BASS BOSS
             </span>
           </div>
@@ -1068,7 +1249,7 @@ export default function SalesPage() {
               <button
                 key={l.label}
                 onClick={() => scrollTo(l.href.slice(1))}
-                className="text-xs font-bold uppercase tracking-wider transition-colors hover:opacity-80"
+                className="bb-eyebrow text-xs transition-colors hover:opacity-80"
                 style={{ color: C.muted }}
               >
                 {l.label}
@@ -1076,7 +1257,7 @@ export default function SalesPage() {
             ))}
             <button
               onClick={() => setModalOpen(true)}
-              className="text-xs font-bold uppercase tracking-wider transition-colors hover:opacity-80"
+              className="bb-eyebrow text-xs transition-colors hover:opacity-80"
               style={{ color: C.muted }}
             >
               Request Access

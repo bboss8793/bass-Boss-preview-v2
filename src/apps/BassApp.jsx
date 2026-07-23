@@ -389,7 +389,7 @@ export default function BassApp() {
                       className="rounded p-2"
                       style={{ backgroundColor: C.bg, border: `1px solid ${C.border}` }}
                     >
-                      <div className="text-xs font-bold mb-0.5" style={{ color: categoryColors[p.category] || C.gold }}>
+                      <div className="bb-title text-xs font-bold mb-0.5" style={{ color: categoryColors[p.category] || C.gold }}>
                         {p.name}
                       </div>
                       <div className="text-xs" style={{ color: C.muted }}>{p.targetDepth}</div>

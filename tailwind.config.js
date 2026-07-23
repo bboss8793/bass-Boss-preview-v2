@@ -5,16 +5,19 @@ export default {
     extend: {
       colors: {
         bg: '#0a0900',
-        card: '#111008',
-        border: '#2a2000',
+        card: '#181508',
+        border: '#2a2200',
         gold: '#c8a030',
         'gold-bright': '#f0c84a',
         'text-primary': '#f0e8c8',
-        'text-muted': '#a08040',
+        'text-muted': '#8a7850',
         'data-green': '#00cc66',
       },
       fontFamily: {
-        serif: ['Georgia', 'Times New Roman', 'serif'],
+        display: ['Bebas Neue', 'sans-serif'],
+        body: ['Barlow', 'sans-serif'],
+        condensed: ['Barlow Condensed', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
     },
   },

@@ -479,7 +479,7 @@ function CoachTab({ orgId, tier = 'pro' }) {
             <div key={em.id} className="rounded p-3 space-y-2" style={{ backgroundColor: '#0f0000', border: `1px solid ${C.red}50` }}>
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-bold" style={{ color: C.text }}>{em.boat_name}</p>
+                  <p className="bb-title font-bold" style={{ color: C.text }}>{em.boat_name}</p>
                   <p className="text-xs mt-0.5" style={{ color: C.muted }}>Capt: {em.captain_name}</p>
                   <p className="text-xs mt-1 font-mono" style={{ color: C.muted }}>
                     {new Date(em.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -638,7 +638,7 @@ function CoachTab({ orgId, tier = 'pro' }) {
               return (
                 <div key={t.id} className="rounded p-3 flex items-center justify-between" style={{ backgroundColor: C.bg, border: `1px solid ${C.border}` }}>
                   <div>
-                    <p className="font-bold text-sm" style={{ color: C.text }}>{t.name}</p>
+                    <p className="bb-title font-bold text-sm" style={{ color: C.text }}>{t.name}</p>
                     <p className="text-xs" style={{ color: C.muted }}>{t.lake_name} · {t.date || 'No date'}</p>
                     <p className="text-xs mt-0.5" style={{ color: C.muted }}>
                       {TYPE_LABELS[t.format_type || 'team']} · {SCORING_LABELS[t.scoring_format || 'best5']}
@@ -718,7 +718,7 @@ function CoachTab({ orgId, tier = 'pro' }) {
           <div className="space-y-2">
             {boats.map((b) => (
               <div key={b.id} className="rounded p-3" style={{ backgroundColor: C.bg, border: `1px solid ${C.border}` }}>
-                <p className="font-bold text-sm" style={{ color: C.text }}>{b.name}</p>
+                <p className="bb-title font-bold text-sm" style={{ color: C.text }}>{b.name}</p>
                 <p className="text-xs mt-0.5" style={{ color: C.muted }}>
                   Capt: {b.captain_name} · {b.angler1_name}{b.angler2_name ? ` · ${b.angler2_name}` : ''}
                 </p>
@@ -1035,7 +1035,7 @@ function CaptainTab({ orgId }) {
         >
           {(emergencyState === 'locating' || emergencyState === 'sending') && (
             <>
-              <p className="font-bold text-lg mb-1" style={{ color: C.gold }}>
+              <p className="bb-title font-bold text-lg mb-1" style={{ color: C.gold }}>
                 {emergencyState === 'locating' ? 'GETTING LOCATION...' : 'TRANSMITTING...'}
               </p>
               <p className="text-sm" style={{ color: C.text }}>
@@ -1045,14 +1045,14 @@ function CaptainTab({ orgId }) {
           )}
           {emergencyState === 'sent' && (
             <>
-              <p className="font-bold text-lg mb-1" style={{ color: C.green }}>EMERGENCY GPS SENT</p>
+              <p className="bb-title font-bold text-lg mb-1" style={{ color: C.green }}>EMERGENCY GPS SENT</p>
               <p className="text-sm mb-3" style={{ color: C.text }}>Your location has been transmitted to the tournament director.</p>
               <GoldButton onClick={() => setEmergencyState('idle')}>Dismiss</GoldButton>
             </>
           )}
           {emergencyState === 'error' && (
             <>
-              <p className="font-bold text-lg mb-1" style={{ color: C.red }}>SEND FAILED</p>
+              <p className="bb-title font-bold text-lg mb-1" style={{ color: C.red }}>SEND FAILED</p>
               <p className="text-sm mb-3" style={{ color: C.text }}>{emergencyError}</p>
               <GoldButton onClick={() => setEmergencyState('idle')}>Dismiss</GoldButton>
             </>
@@ -1061,7 +1061,7 @@ function CaptainTab({ orgId }) {
       )}
       {showHelp && (
         <div className="rounded-lg p-4 text-center" style={{ backgroundColor: '#0a0a00', border: `2px solid ${C.gold}` }}>
-          <p className="font-bold text-lg mb-1" style={{ color: C.goldLight }}>HELP REQUEST SENT</p>
+          <p className="bb-title font-bold text-lg mb-1" style={{ color: C.goldLight }}>HELP REQUEST SENT</p>
           <p className="text-sm mb-3" style={{ color: C.text }}>Tournament director has been notified.</p>
           <GoldButton onClick={() => setShowHelp(false)}>Dismiss</GoldButton>
         </div>
@@ -1259,7 +1259,7 @@ function AnglerTab({ orgId }) {
     <div className="space-y-5">
       <ReceiptCard>
         <div className="flex items-center justify-between mb-1">
-          <p className="font-bold" style={{ color: C.text }}>{activeTournament.name}</p>
+          <p className="bb-title font-bold" style={{ color: C.text }}>{activeTournament.name}</p>
           <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ backgroundColor: C.muted, color: C.bg }}>ENDED</span>
         </div>
         <p className="text-xs mb-3" style={{ color: C.muted }}>{activeTournament.lake_name}</p>
@@ -1335,7 +1335,7 @@ function ParentTab({ orgId }) {
         </div>
         {activeTournament ? (
           <>
-            <p className="font-bold" style={{ color: C.goldLight }}>{activeTournament.name}</p>
+            <p className="bb-title font-bold" style={{ color: C.goldLight }}>{activeTournament.name}</p>
             <p className="text-xs mt-0.5" style={{ color: C.muted }}>{activeTournament.lake_name} · {activeTournament.date}</p>
           </>
         ) : (
@@ -2176,7 +2176,7 @@ function CourseTab() {
         </div>
 
         <ReceiptCard>
-          <p className="font-bold mb-1" style={{ color: C.text }}>Final Certification Exam</p>
+          <p className="bb-title font-bold mb-1" style={{ color: C.text }}>Final Certification Exam</p>
           <p className="text-xs mb-3" style={{ color: C.muted }}>20 questions — must score 80% (16/20) to pass — unlimited retakes</p>
           <div className="w-full rounded-full h-1.5" style={{ backgroundColor: C.border }}>
             <div className="h-1.5 rounded-full transition-all" style={{ width: `${(answeredCount / TOTAL_QUESTIONS) * 100}%`, backgroundColor: C.gold }} />
@@ -2227,7 +2227,7 @@ function CourseTab() {
     <div className="space-y-5">
       <ReceiptCard>
         <div className="flex items-center justify-between mb-1">
-          <p className="font-bold" style={{ color: C.text }}>Coach Certification Course</p>
+          <p className="bb-title font-bold" style={{ color: C.text }}>Coach Certification Course</p>
           <span className="text-sm font-bold" style={{ color: completed.length === MODULES.length ? C.green : C.gold }}>
             {completed.length}/{MODULES.length} modules
           </span>
@@ -2377,7 +2377,7 @@ export default function TeamDashboard() {
             className="w-full max-w-sm rounded-2xl p-6 space-y-4"
             style={{ backgroundColor: C.card, border: `1px solid ${C.border}` }}
           >
-            <p className="font-bold text-sm text-center" style={{ color: C.text }}>Leave Team?</p>
+            <p className="bb-title font-bold text-sm text-center" style={{ color: C.text }}>Leave Team?</p>
             <p className="text-xs text-center" style={{ color: C.muted }}>
               You will need to re-enter the Team Code to rejoin.
             </p>

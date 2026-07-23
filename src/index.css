@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 * {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: Barlow, sans-serif;
   box-sizing: border-box;
 }
 
@@ -13,4 +13,46 @@ body {
   color: #f0e8c8;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Bebas Neue', sans-serif;
+  text-transform: uppercase;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.bb-title {
+  font-family: 'Bebas Neue', sans-serif;
+  text-transform: uppercase;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.bb-eyebrow {
+  font-family: 'Barlow Condensed', sans-serif;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+}
+
+@keyframes audience-breathe {
+  0%, 100% {
+    box-shadow: 0 0 12px 2px rgba(200, 160, 48, 0.08), inset 0 0 12px 0 rgba(200, 160, 48, 0.03);
+    border-color: rgba(200, 160, 48, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 28px 6px rgba(200, 160, 48, 0.22), inset 0 0 20px 0 rgba(200, 160, 48, 0.06);
+    border-color: rgba(200, 160, 48, 0.65);
+  }
+}
+
+.audience-pulse {
+  animation: audience-breathe 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .audience-pulse {
+    animation: none;
+  }
 }
