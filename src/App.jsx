@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, NavLink, Link } from 'react-router-dom'
 import BassApp from './apps/BassApp'
 import ClubDashboard from './apps/ClubDashboard'
 import TeamDashboard from './apps/TeamDashboard'
@@ -17,7 +17,15 @@ const C = {
 
 function NavBar() {
   return (
-    <nav className="bg-[#111008] border-b border-[#C8A030] flex w-full sticky top-0 z-50">
+    <nav className="bg-[#111008] border-b border-[#C8A030] flex w-full sticky top-0 z-50 items-center">
+      <Link
+        to="/"
+        aria-label="Back to Bass Boss home"
+        className="flex items-center gap-2 pl-3 pr-2 py-1.5 flex-shrink-0 hover:brightness-110 transition"
+      >
+        <img src="/Logo-crest.png" alt="" style={{ height: '30px', width: 'auto' }} />
+      </Link>
+      <div className="flex flex-1">
       {[
         { to: '/app', label: 'On Water', end: true },
         { to: '/club', label: 'Club' },
@@ -38,6 +46,7 @@ function NavBar() {
           {label}
         </NavLink>
       ))}
+      </div>
     </nav>
   )
 }
