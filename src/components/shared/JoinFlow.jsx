@@ -9,6 +9,8 @@ const C = {
   muted: '#a08040', green: '#00cc66', red: '#ef4444',
 }
 
+const ORG_TYPE_TO_DB = { club: 'Adult Bass Club', team: 'High School Team' }
+
 const PLANS = [
   { name: 'Starter',  anglers: 'Up to 20', tournaments: '6/year',    adultAnnual: '$249/yr', adultMonthly: '$25/mo', hsAnnual: '$299/yr', hsMonthly: '$30/mo' },
   { name: 'Standard', anglers: 'Up to 35', tournaments: 'Unlimited', adultAnnual: '$349/yr', adultMonthly: '$35/mo', hsAnnual: '$399/yr', hsMonthly: '$40/mo' },
@@ -203,10 +205,10 @@ export default function JoinFlow({ orgType }) {
     setLoading(true)
     setError('')
     const { data: org } = await supabase
-      .from('organizations')
+      .from('teams')
       .select('*')
-      .eq('code', trimmed)
-      .eq('type', orgType)
+      .eq('org_code', trimmed)
+      .eq('org_type', ORG_TYPE_TO_DB[orgType])
       .maybeSingle()
 
     if (!org) {
@@ -219,9 +221,9 @@ export default function JoinFlow({ orgType }) {
 
     if (org.roster_mode === 'locked') {
       const { data: members } = await supabase
-        .from('roster_members')
+        .from('roster')
         .select('*')
-        .eq('org_id', org.id)
+        .eq('team_id', org.id)
         .order('name')
       setRoster(members || [])
       setStep('roster')
@@ -238,7 +240,7 @@ export default function JoinFlow({ orgType }) {
     setMemberSession({
       orgId: foundOrg.id,
       orgName: foundOrg.name,
-      orgType: foundOrg.type,
+      orgType,
       memberName: name,
     })
   }
@@ -249,7 +251,7 @@ export default function JoinFlow({ orgType }) {
     setMemberSession({
       orgId: foundOrg.id,
       orgName: foundOrg.name,
-      orgType: foundOrg.type,
+      orgType,
       memberName: selectedName,
     })
   }

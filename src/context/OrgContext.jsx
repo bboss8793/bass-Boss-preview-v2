@@ -5,6 +5,9 @@ const OrgContext = createContext(null)
 
 const SESSION_KEY = 'bb_member_session'
 
+const DB_TO_ORG_TYPE = { 'Adult Bass Club': 'club', 'High School Team': 'team' }
+const ORG_TYPE_TO_DB = { club: 'Adult Bass Club', team: 'High School Team' }
+
 function loadStoredSession() {
   try {
     const raw = localStorage.getItem(SESSION_KEY)
@@ -66,12 +69,12 @@ export function OrgProvider({ children }) {
     }
     setLoadingOrg(true)
     supabase
-      .from('organizations')
+      .from('teams')
       .select('*')
-      .eq('director_id', authUser.id)
+      .eq('director_email', authUser.email)
       .maybeSingle()
       .then(({ data }) => {
-        setOrg(data || null)
+        setOrg(data ? { ...data, type: DB_TO_ORG_TYPE[data.org_type] || data.org_type } : null)
         setLoadingOrg(false)
       })
   }, [authUser])
@@ -85,10 +88,10 @@ export function OrgProvider({ children }) {
       return
     }
     supabase
-      .from('organizations')
-      .select('id, type')
+      .from('teams')
+      .select('id, org_type')
       .eq('id', stored.orgId)
-      .eq('type', stored.orgType)
+      .eq('org_type', ORG_TYPE_TO_DB[stored.orgType] || stored.orgType)
       .maybeSingle()
       .then(({ data }) => {
         if (!data) {

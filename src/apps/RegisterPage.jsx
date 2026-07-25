@@ -40,19 +40,19 @@ function Input({ type = 'text', value, onChange, placeholder, autoComplete }) {
 function OrgDashboard({ org: initialOrg }) {
   const [org, setOrg] = useState(initialOrg)
   const [copied, setCopied] = useState(false)
-  const [rosterMode, setRosterMode] = useState(initialOrg.roster_mode)
+  const [rosterMode, setRosterMode] = useState(initialOrg.roster_mode || 'open')
   const [roster, setRoster] = useState([])
   const [newName, setNewName] = useState('')
   const [addingName, setAddingName] = useState(false)
   const [savingMode, setSavingMode] = useState(false)
 
   useEffect(() => {
-    supabase.from('roster_members').select('*').eq('org_id', org.id).order('name').then(({ data }) => setRoster(data || []))
+    supabase.from('roster').select('*').eq('team_id', org.id).order('name').then(({ data }) => setRoster(data || []))
   }, [org.id])
 
   async function toggleRosterMode(mode) {
     setSavingMode(true)
-    const { data } = await supabase.from('organizations').update({ roster_mode: mode }).eq('id', org.id).select().maybeSingle()
+    const { data } = await supabase.from('teams').update({ roster_mode: mode }).eq('id', org.id).select().maybeSingle()
     if (data) { setOrg(data); setRosterMode(mode) }
     setSavingMode(false)
   }
@@ -61,14 +61,14 @@ function OrgDashboard({ org: initialOrg }) {
     e.preventDefault()
     if (!newName.trim()) return
     setAddingName(true)
-    const { data } = await supabase.from('roster_members').insert([{ org_id: org.id, name: newName.trim() }]).select().maybeSingle()
+    const { data } = await supabase.from('roster').insert([{ team_id: org.id, name: newName.trim() }]).select().maybeSingle()
     if (data) setRoster((r) => [...r, data].sort((a, b) => a.name.localeCompare(b.name)))
     setNewName('')
     setAddingName(false)
   }
 
   async function removeRosterMember(id) {
-    await supabase.from('roster_members').delete().eq('id', id)
+    await supabase.from('roster').delete().eq('id', id)
     setRoster((r) => r.filter((m) => m.id !== id))
   }
 
@@ -76,7 +76,7 @@ function OrgDashboard({ org: initialOrg }) {
     navigator.clipboard.writeText(org.code).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) })
   }
 
-  const label = org.type === 'team' ? 'Team Code' : 'Club Code'
+  const label = (org.org_type || org.type) === 'High School Team' ? 'Team Code' : 'Club Code'
 
   return (
     <div className="space-y-5">
@@ -87,7 +87,7 @@ function OrgDashboard({ org: initialOrg }) {
       >
         <p className="text-xs uppercase tracking-widest font-bold mb-2" style={{ color: C.muted }}>{label}</p>
         <p className="text-5xl font-bold tracking-[0.25em] my-3" style={{ color: C.goldLight, fontVariantNumeric: 'tabular-nums' }}>
-          {org.code}
+          {org.org_code || org.code}
         </p>
         <p className="text-xs mb-4" style={{ color: C.muted }}>Share this with your anglers so they can join.</p>
         <button
@@ -209,18 +209,19 @@ export default function RegisterPage() {
     let code = generateCode()
     let attempts = 0
     while (attempts < 10) {
-      const { data: existing } = await supabase.from('organizations').select('id').eq('code', code).maybeSingle()
+      const { data: existing } = await supabase.from('teams').select('id').eq('org_code', code).maybeSingle()
       if (!existing) break
       code = generateCode()
       attempts++
     }
 
-    const { data: orgData, error: orgErr } = await supabase.from('organizations').insert([{
+    const { data: orgData, error: orgErr } = await supabase.from('teams').insert([{
       name: orgName.trim(),
-      type: orgType === 'High School Team' ? 'team' : 'club',
-      code,
-      director_id: userId,
-      roster_mode: 'open',
+      org_type: orgType,
+      org_code: code,
+      director_name: form.fullName.trim(),
+      director_email: form.email.trim(),
+      status: 'active',
     }]).select().maybeSingle()
 
     if (orgErr) { setError(`Account created but org setup failed: ${orgErr.message}`); setSaving(false); return }
