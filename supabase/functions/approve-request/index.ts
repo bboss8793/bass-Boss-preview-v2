@@ -118,21 +118,30 @@ function generateOrgCode(): string {
   return code;
 }
 
-function buildWelcomeText(directorName: string, orgName: string, orgCode: string): string {
+function buildWelcomeText(directorName: string, orgName: string, orgCode: string, setupLink: string): string {
   return [
     `Hey ${directorName},`,
     ``,
     `Great news — your Bass Boss access request for ${orgName} has been approved!`,
     ``,
+    `There are two sides to your account — yours and your members'. Here's how each works:`,
+    ``,
+    `— FOR YOU (the director) —`,
+    `We created your director account using ${orgName}'s email on file. Before you can sign in, you need to set a password:`,
+    `1. Click this link to set your password: ${setupLink}`,
+    `2. After setting your password, go to ${APP_BASE}`,
+    `3. Click "Are you a Director? Sign In" on the join screen`,
+    `4. Sign in with your email and new password`,
+    `5. You'll see your Director dashboard with tools to manage tournaments, boats, and your roster`,
+    ``,
+    `— FOR YOUR MEMBERS (anglers) —`,
     `Your organization code is: ${orgCode}`,
-    ``,
-    `Here's how to get started:`,
+    `Share this code with your members. They do NOT need a password or account — they just:`,
     `1. Go to ${APP_BASE}`,
-    `2. Log in or create your director account`,
-    `3. Enter your org code ${orgCode} when prompted`,
-    `4. Share this code with your members so they can join your org`,
+    `2. Enter the code ${orgCode} on the join screen`,
+    `3. Type their name and they're in`,
     ``,
-    `Your members will use the same code when they sign up — this is how they connect to your team.`,
+    `The org code is for your members only. You sign in with your email and password — don't enter the org code yourself.`,
     ``,
     `Welcome aboard,`,
     `The Bass Boss Team`,
@@ -140,7 +149,7 @@ function buildWelcomeText(directorName: string, orgName: string, orgCode: string
   ].join("\n");
 }
 
-function buildWelcomeHtml(directorName: string, orgName: string, orgCode: string): string {
+function buildWelcomeHtml(directorName: string, orgName: string, orgCode: string, setupLink: string): string {
   return `<!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#0a0900;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
@@ -153,18 +162,47 @@ function buildWelcomeHtml(directorName: string, orgName: string, orgCode: string
         <tr><td style="padding:0 28px 28px;">
           <p style="font-size:16px;line-height:1.5;color:#f0e8c8;">Hey ${escapeHtml(directorName)},</p>
           <p style="font-size:15px;line-height:1.6;color:#f0e8c8;">Great news — your Bass Boss access request for <strong style="color:#f0c84a;">${escapeHtml(orgName)}</strong> has been approved!</p>
-          <p style="font-size:15px;line-height:1.6;color:#f0e8c8;margin-bottom:8px;">Your organization code is:</p>
-          <p style="text-align:center;margin:8px 0 24px;">
-            <span style="display:inline-block;padding:12px 32px;background:#1a1a0a;border:2px solid #c8a030;border-radius:8px;font-family:monospace;font-size:24px;font-weight:bold;color:#f0c84a;letter-spacing:4px;">${escapeHtml(orgCode)}</span>
+          <p style="font-size:15px;line-height:1.6;color:#f0e8c8;">There are two sides to your account — yours and your members'. Here's how each works:</p>
+
+          <!-- Director section -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;margin-bottom:8px;">
+            <tr><td style="background:#1a1a0a;border:1px solid #c8a030;border-radius:8px;padding:16px 20px;">
+              <p style="font-size:13px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;color:#c8a030;margin:0 0 10px;">For You (Director)</p>
+              <p style="font-size:14px;line-height:1.6;color:#f0e8c8;margin:0 0 12px;">We created your director account. Before you can sign in, set your password:</p>
+              <p style="text-align:center;margin:0 0 14px;">
+                <a href="${escapeHtml(setupLink)}" style="display:inline-block;padding:12px 28px;background:#c8a030;border-radius:6px;font-size:14px;font-weight:bold;color:#0a0900;text-decoration:none;">Set Your Password</a>
+              </p>
+              <p style="font-size:13px;line-height:1.6;color:#8a7a40;margin:0 0 6px;">Then:</p>
+              <ol style="font-size:14px;line-height:1.7;color:#f0e8c8;padding-left:20px;margin:0;">
+                <li>Go to <a href="${APP_BASE}" style="color:#c8a030;text-decoration:none;">${APP_BASE}</a></li>
+                <li>Click <strong style="color:#f0c84a;">"Are you a Director? Sign In"</strong> on the join screen</li>
+                <li>Sign in with your email and new password</li>
+                <li>You'll see your Director dashboard to manage tournaments, boats, and roster</li>
+              </ol>
+            </td></tr>
+          </table>
+
+          <!-- Members section -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;margin-bottom:8px;">
+            <tr><td style="background:#0f0f08;border:1px solid #2a2000;border-radius:8px;padding:16px 20px;">
+              <p style="font-size:13px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;color:#a08040;margin:0 0 10px;">For Your Members (Anglers)</p>
+              <p style="font-size:14px;line-height:1.6;color:#f0e8c8;margin:0 0 8px;">Your organization code is:</p>
+              <p style="text-align:center;margin:4px 0 14px;">
+                <span style="display:inline-block;padding:10px 28px;background:#1a1a0a;border:2px solid #c8a030;border-radius:8px;font-family:monospace;font-size:22px;font-weight:bold;color:#f0c84a;letter-spacing:4px;">${escapeHtml(orgCode)}</span>
+              </p>
+              <p style="font-size:13px;line-height:1.6;color:#8a7a40;margin:0 0 6px;">Share this code with your members. They don't need a password or account — they just:</p>
+              <ol style="font-size:14px;line-height:1.7;color:#f0e8c8;padding-left:20px;margin:0;">
+                <li>Go to <a href="${APP_BASE}" style="color:#c8a030;text-decoration:none;">${APP_BASE}</a></li>
+                <li>Enter the code <strong style="font-family:monospace;color:#f0c84a;">${escapeHtml(orgCode)}</strong> on the join screen</li>
+                <li>Type their name and they're in</li>
+              </ol>
+            </td></tr>
+          </table>
+
+          <p style="font-size:13px;line-height:1.6;color:#8a7a40;margin:16px 0 20px;border-top:1px solid #2a2000;padding-top:16px;">
+            <strong style="color:#c8a030;">Important:</strong> The org code is for your members only. You sign in with your email and password — don't enter the org code yourself.
           </p>
-          <p style="font-size:15px;line-height:1.6;color:#f0e8c8;margin-bottom:8px;"><strong>How to get started:</strong></p>
-          <ol style="font-size:15px;line-height:1.8;color:#f0e8c8;padding-left:24px;margin:0 0 16px;">
-            <li>Go to <a href="${APP_BASE}" style="color:#c8a030;text-decoration:none;">${APP_BASE}</a></li>
-            <li>Log in or create your director account</li>
-            <li>Enter your org code <strong style="font-family:monospace;color:#f0c84a;">${escapeHtml(orgCode)}</strong> when prompted</li>
-            <li>Share this code with your members so they can join your org</li>
-          </ol>
-          <p style="font-size:14px;line-height:1.6;color:#8a7a40;margin:0 0 24px;">Your members will use the same code when they sign up — this is how they connect to your team.</p>
+
           <p style="font-size:15px;line-height:1.6;color:#f0e8c8;">Welcome aboard,<br><strong style="color:#f0c84a;">The Bass Boss Team</strong><br><a href="${APP_BASE}" style="color:#c8a030;text-decoration:none;">getbassboss.com</a></p>
         </td></tr>
       </table>
@@ -191,10 +229,14 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const supabase = createClient(supabaseUrl, anonKey);
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     // 1. Look up the request row
     const { data: reqRow, error: lookupErr } = await supabase
@@ -267,19 +309,51 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // 6. Update the access_requests row
+    // 6. Create the director's auth account + generate a password-setup link.
+    //    The admin createUser call creates the user without a password; the
+    //    recovery link lets the director set one themselves.
+    let setupLink = `${APP_BASE}/login`;
+    try {
+      const { data: createdUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+        email: reqRow.email,
+        email_confirm: true,
+        user_metadata: { name: reqRow.name, org_name: reqRow.org_name },
+      });
+
+      if (createErr) {
+        // If the user already exists (duplicate email), that's fine — they may
+        // have registered previously. Generate a recovery link for them instead.
+        console.error("admin.createUser error:", createErr.message);
+      }
+
+      const userId = createdUser?.user?.id;
+
+      // Generate a recovery/password-setup link for this user
+      const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+        type: "recovery",
+        email: reqRow.email,
+      });
+
+      if (linkErr) {
+        console.error("generateLink error:", linkErr.message);
+      } else if (linkData?.properties?.action_link) {
+        setupLink = linkData.properties.action_link;
+      }
+    } catch (authErr) {
+      console.error("Auth user creation failed:", authErr.message);
+    }
+
+    // 7. Update the access_requests row
     const { error: updateErr } = await supabase
       .from("access_requests")
       .update({ status: "approved", reviewed_at: new Date().toISOString() })
       .eq("id", id);
 
     if (updateErr) {
-      // Team was created but status update failed — log but still show success
-      // since the org is live. The status will need manual correction.
       console.error("Failed to update access_requests status:", updateErr.message);
     }
 
-    // 7. Send welcome email to the director
+    // 8. Send welcome email to the director
     try {
       const apiKey = await getResendApiKey();
       const firstName = (reqRow.name || "").trim().split(/\s+/)[0] || reqRow.name;
@@ -291,8 +365,8 @@ Deno.serve(async (req: Request) => {
             from: FROM,
             to: reqRow.email,
             subject: `You're approved — welcome to Bass Boss, ${firstName}!`,
-            text: buildWelcomeText(firstName, reqRow.org_name, orgCode),
-            html: buildWelcomeHtml(firstName, reqRow.org_name, orgCode),
+            text: buildWelcomeText(firstName, reqRow.org_name, orgCode, setupLink),
+            html: buildWelcomeHtml(firstName, reqRow.org_name, orgCode, setupLink),
             reply_to: "customerservice@getbassboss.com",
           }),
         });
@@ -301,15 +375,13 @@ Deno.serve(async (req: Request) => {
           console.error(`Welcome email Resend API error (${emailRes.status}): ${errText}`);
         }
       } catch (emailErr) {
-        // Email failure shouldn't block the approval — the org is created
         console.error("Welcome email failed:", emailErr.message);
       }
     } catch (keyErr) {
-      // Key lookup failed — log so it's visible, but don't block the approval
       console.error("Could not obtain Resend API key for welcome email:", keyErr.message);
     }
 
-    // 8. Return confirmation page
+    // 9. Return confirmation page
     return new Response(approvedPage(reqRow.org_name, orgCode, reqRow.name), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
