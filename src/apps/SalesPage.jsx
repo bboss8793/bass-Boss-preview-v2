@@ -305,6 +305,11 @@ const FAQS = [
 ]
 
 function RequestModal({ onClose }) {
+  // 'role' | 'director' | 'anglerQ' | 'anglerYes' | 'anglerForm' | 'anglerDone'
+  const [path, setPath] = useState('role')
+  const [role, setRole] = useState('')
+  const [anglerSetup, setAnglerSetup] = useState('')
+
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -316,12 +321,25 @@ function RequestModal({ onClose }) {
     referral: '',
     tournament_info: '',
   })
+  const [anglerForm, setAnglerForm] = useState({
+    angler_name: '',
+    angler_email: '',
+    angler_phone: '',
+    club_or_team_name: '',
+    director_name: '',
+    director_contact: '',
+  })
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
+  const [anglerDone, setAnglerDone] = useState(false)
   const [error, setError] = useState('')
 
   function set(field, value) {
     setForm((f) => ({ ...f, [field]: value }))
+    setError('')
+  }
+  function setAngler(field, value) {
+    setAnglerForm((f) => ({ ...f, [field]: value }))
     setError('')
   }
 
@@ -357,6 +375,35 @@ function RequestModal({ onClose }) {
     }
   }
 
+  async function handleAnglerSubmit(e) {
+    e.preventDefault()
+    const f = anglerForm
+    if (!f.angler_name.trim()) return setError('Your name is required.')
+    if (!f.angler_email.trim() || !/\S+@\S+\.\S+/.test(f.angler_email)) return setError('A valid angler email is required.')
+    if (!f.club_or_team_name.trim()) return setError('Club or team name is required.')
+    if (!f.director_name.trim()) return setError('Director or coach name is required.')
+    if (!f.director_contact.trim()) return setError('Director or coach contact info is required.')
+
+    setSaving(true)
+    const payload = {
+      angler_name: f.angler_name.trim(),
+      angler_email: f.angler_email.trim(),
+      angler_phone: f.angler_phone.trim() || null,
+      club_or_team_name: f.club_or_team_name.trim(),
+      director_name: f.director_name.trim(),
+      director_contact: f.director_contact.trim(),
+    }
+    console.log('[angler_leads] INSERT payload:', payload)
+    const { error: dbErr } = await supabase.from('angler_leads').insert([payload])
+    console.log('[angler_leads] INSERT result:', dbErr ? { error: dbErr } : { ok: true })
+    setSaving(false)
+    if (dbErr) {
+      setError('Something went wrong. Please try again.')
+    } else {
+      setAnglerDone(true)
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-end justify-center p-0 sm:items-center sm:p-4"
@@ -376,7 +423,11 @@ function RequestModal({ onClose }) {
               Request Beta Access
             </p>
             <p className="text-xs mt-0.5" style={{ color: C.muted }}>
-              No password needed — just tell us about your organization.
+              {path === 'role'
+                ? 'Tell us how you plan to use Bass Boss.'
+                : role === 'angler'
+                ? 'Joining an existing club or team.'
+                : 'No password needed — just tell us about your organization.'}
             </p>
           </div>
           <button
@@ -389,6 +440,7 @@ function RequestModal({ onClose }) {
         </div>
 
         <div className="px-5 py-5">
+          {/* ── Director success ───────────────────────────────────── */}
           {done ? (
             <div className="text-center py-8 space-y-4">
               <p className="bb-title text-xl" style={{ color: C.gold, fontSize: '28px', letterSpacing: '2px' }}>You're on the list!</p>
@@ -403,7 +455,194 @@ function RequestModal({ onClose }) {
                 Done
               </button>
             </div>
-          ) : (
+          ) : path === 'role' ? (
+            /* ── STEP 1: Role selector ─────────────────────────────── */
+            <div className="space-y-4">
+              <p className="text-sm font-bold text-center" style={{ color: C.text }}>
+                Are you a Director/Coach setting up a new club or team, or an Angler looking to join one?
+              </p>
+              <div className="grid grid-cols-1 gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setRole('director'); setPath('director'); setError('') }}
+                  className="w-full py-4 px-4 rounded text-left transition-colors"
+                  style={{ backgroundColor: C.bg, color: C.text, border: `1px solid ${C.border}` }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = C.gold)}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = C.border)}
+                >
+                  <span className="block text-sm font-bold" style={{ color: C.goldLight }}>Director / Coach</span>
+                  <span className="block text-xs mt-0.5" style={{ color: C.muted }}>Setting up a new club or team</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setRole('angler'); setPath('anglerQ'); setError('') }}
+                  className="w-full py-4 px-4 rounded text-left transition-colors"
+                  style={{ backgroundColor: C.bg, color: C.text, border: `1px solid ${C.border}` }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = C.gold)}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = C.border)}
+                >
+                  <span className="block text-sm font-bold" style={{ color: C.goldLight }}>Angler</span>
+                  <span className="block text-xs mt-0.5" style={{ color: C.muted }}>Looking to join an existing club or team</span>
+                </button>
+              </div>
+              {error && <p className="text-xs text-center font-bold" style={{ color: C.red }}>{error}</p>}
+            </div>
+          ) : path === 'anglerQ' ? (
+            /* ── STEP 2B: Angler follow-up question ────────────────── */
+            <div className="space-y-4">
+              <p className="text-sm font-bold text-center" style={{ color: C.text }}>
+                Has your director or coach already set up your club/team in Bass Boss?
+              </p>
+              <div className="grid grid-cols-1 gap-3">
+                {['Yes', 'No', 'Not sure'].map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => {
+                      setAnglerSetup(opt)
+                      setError('')
+                      if (opt === 'Yes') {
+                        setPath('anglerYes')
+                      } else {
+                        setPath('anglerForm')
+                      }
+                    }}
+                    className="w-full py-3.5 rounded text-sm font-bold transition-colors"
+                    style={{
+                      backgroundColor: anglerSetup === opt ? C.gold : C.bg,
+                      color: anglerSetup === opt ? C.bg : C.text,
+                      border: `1px solid ${anglerSetup === opt ? C.gold : C.border}`,
+                    }}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => { setPath('role'); setAnglerSetup(''); setError('') }}
+                className="w-full py-2 text-xs font-bold"
+                style={{ color: C.muted }}
+              >
+                Back
+              </button>
+            </div>
+          ) : path === 'anglerYes' ? (
+            /* ── Angler "Yes" — inline message, no form ─────────────── */
+            <div className="text-center py-6 space-y-5">
+              <div className="mx-auto w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: '#0a2a14', border: `1px solid ${C.green}` }}>
+                <span style={{ color: C.green, fontSize: '28px', lineHeight: 1 }}>✓</span>
+              </div>
+              <p className="text-sm leading-relaxed" style={{ color: C.text }}>
+                You're already covered! Ask your director or coach for your club's org code and enter it in the app to join — no approval wait needed.
+              </p>
+              <Link
+                to="/join"
+                className="inline-block px-6 py-3 rounded font-bold text-sm uppercase tracking-widest transition-opacity hover:opacity-90"
+                style={{ backgroundColor: C.gold, color: C.bg }}
+              >
+                Enter Org Code
+              </Link>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => { setPath('role'); setAnglerSetup(''); setError('') }}
+                  className="text-xs font-bold"
+                  style={{ color: C.muted }}
+                >
+                  Back to start
+                </button>
+              </div>
+            </div>
+          ) : path === 'anglerForm' && !anglerDone ? (
+            /* ── Angler "No"/"Not sure" — lead capture form ────────── */
+            <form onSubmit={handleAnglerSubmit} className="space-y-4">
+              <Field label="Your Name" required>
+                <Input
+                  value={anglerForm.angler_name}
+                  onChange={(e) => setAngler('angler_name', e.target.value)}
+                  placeholder="Jane Angler"
+                />
+              </Field>
+              <Field label="Your Email" required>
+                <Input
+                  type="email"
+                  value={anglerForm.angler_email}
+                  onChange={(e) => setAngler('angler_email', e.target.value)}
+                  placeholder="jane@example.com"
+                />
+              </Field>
+              <Field label="Your Phone">
+                <Input
+                  type="tel"
+                  value={anglerForm.angler_phone}
+                  onChange={(e) => setAngler('angler_phone', e.target.value)}
+                  placeholder="(555) 000-0000"
+                />
+              </Field>
+              <Field label="Club or Team Name" required>
+                <Input
+                  value={anglerForm.club_or_team_name}
+                  onChange={(e) => setAngler('club_or_team_name', e.target.value)}
+                  placeholder="Lake Conroe Bass Club"
+                />
+              </Field>
+              <Field label="Director or Coach Name" required>
+                <Input
+                  value={anglerForm.director_name}
+                  onChange={(e) => setAngler('director_name', e.target.value)}
+                  placeholder="Coach Smith"
+                />
+              </Field>
+              <Field label="Director/Coach Contact (email or phone)" required>
+                <Input
+                  value={anglerForm.director_contact}
+                  onChange={(e) => setAngler('director_contact', e.target.value)}
+                  placeholder="coach@email.com or (555) 000-0000"
+                />
+              </Field>
+              {error && (
+                <p
+                  className="text-xs text-center font-bold py-2 rounded"
+                  style={{ color: C.red, backgroundColor: '#1a0000', border: `1px solid ${C.red}40` }}
+                >
+                  {error}
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={saving}
+                className="w-full py-3.5 rounded font-bold text-sm uppercase tracking-widest transition-opacity disabled:opacity-60"
+                style={{ backgroundColor: C.gold, color: C.bg }}
+              >
+                {saving ? 'Submitting…' : 'Submit'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPath('anglerQ'); setAnglerSetup(''); setError('') }}
+                className="w-full py-2 text-xs font-bold"
+                style={{ color: C.muted }}
+              >
+                Back
+              </button>
+            </form>
+          ) : path === 'anglerForm' && anglerDone ? (
+            /* ── Angler success ────────────────────────────────────── */
+            <div className="text-center py-8 space-y-4">
+              <p className="bb-title text-xl" style={{ color: C.gold, fontSize: '28px', letterSpacing: '2px' }}>You're on the list!</p>
+              <p className="text-sm leading-relaxed" style={{ color: C.text }}>
+                Thanks! We've let your director know you're ready to join. Once they set up your club or team in Bass Boss, they'll give you an org code — just enter it in the app to join, no approval wait needed.
+              </p>
+              <button
+                onClick={onClose}
+                className="mt-2 px-6 py-2.5 rounded font-bold text-sm uppercase tracking-widest transition-colors"
+                style={{ backgroundColor: C.gold, color: C.bg }}
+              >
+                Done
+              </button>
+            </div>
+          ) : path === 'director' ? (
+            /* ── STEP 2A: Director/Coach path — existing form ──────── */
             <form onSubmit={handleSubmit} className="space-y-4">
               <Field label="Full Name" required>
                 <Input
@@ -537,7 +776,7 @@ function RequestModal({ onClose }) {
                 {saving ? 'Submitting…' : 'Request Access'}
               </button>
             </form>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

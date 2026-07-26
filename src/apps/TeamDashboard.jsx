@@ -621,7 +621,7 @@ function CoachTab({ orgId, tier = 'pro' }) {
           <div>
             <p className="text-xs mb-1.5" style={{ color: C.muted }}>Fish Limit</p>
             <div className="flex gap-2">
-              {[3, 5].map((n) => (
+              {[1, 3, 5].map((n) => (
                 <button key={n} type="button" onClick={() => setNewTourneyFishLimit(n)}
                   className="flex-1 py-1.5 rounded text-xs font-bold transition-colors"
                   style={{ backgroundColor: newTourneyFishLimit === n ? C.gold : C.bg, color: newTourneyFishLimit === n ? C.bg : C.muted, border: `1px solid ${newTourneyFishLimit === n ? C.gold : C.border}` }}
