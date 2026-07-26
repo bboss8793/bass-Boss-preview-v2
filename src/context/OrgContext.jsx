@@ -81,9 +81,16 @@ export function OrgProvider({ children }) {
       .from('teams')
       .select('*')
       .eq('director_email', authUser.email)
-      .maybeSingle()
-      .then(({ data }) => {
-        setOrg(data ? { ...data, type: DB_TO_ORG_TYPE[data.org_type] || data.org_type } : null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Director org lookup failed:', error.message)
+          setOrg(null)
+        } else {
+          const row = data && data.length ? data[0] : null
+          setOrg(row ? { ...row, type: DB_TO_ORG_TYPE[row.org_type] || row.org_type } : null)
+        }
         setLoadingOrg(false)
       })
   }, [authUser])

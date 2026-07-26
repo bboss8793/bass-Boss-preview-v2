@@ -289,24 +289,42 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // 5. Insert the new team/org row
-    const { error: insertErr } = await supabase
+    // 5. Insert the new team/org row — but only if this director doesn't
+    //    already have an active team for this org type. Repeated approvals
+    //    of the same request (or stale requests) should not create duplicate
+    //    teams, which would break the director's maybeSingle() lookup.
+    const { data: existingTeam } = await supabase
       .from("teams")
-      .insert({
-        name: reqRow.org_name,
-        org_code: orgCode,
-        org_type: reqRow.org_type,
-        director_name: reqRow.name,
-        director_email: reqRow.email,
-        director_phone: reqRow.phone,
-        status: "active",
-      });
+      .select("id, org_code")
+      .eq("director_email", reqRow.email)
+      .eq("org_type", reqRow.org_type)
+      .eq("status", "active")
+      .maybeSingle();
 
-    if (insertErr) {
-      return new Response(errorPage(`Failed to create organization: ${insertErr.message}`), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
-      });
+    let teamOrgCode = orgCode;
+    if (existingTeam) {
+      // Director already has an active team of this type — reuse it instead
+      // of inserting a duplicate. We still send a fresh welcome/setup email.
+      teamOrgCode = existingTeam.org_code;
+    } else {
+      const { error: insertErr } = await supabase
+        .from("teams")
+        .insert({
+          name: reqRow.org_name,
+          org_code: orgCode,
+          org_type: reqRow.org_type,
+          director_name: reqRow.name,
+          director_email: reqRow.email,
+          director_phone: reqRow.phone,
+          status: "active",
+        });
+
+      if (insertErr) {
+        return new Response(errorPage(`Failed to create organization: ${insertErr.message}`), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
+        });
+      }
     }
 
     // 6. Create the director's auth account + generate a password-setup link.
@@ -332,6 +350,9 @@ Deno.serve(async (req: Request) => {
       const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
         type: "recovery",
         email: reqRow.email,
+        options: {
+          redirectTo: "https://getbassboss.com/reset-password",
+        },
       });
 
       if (linkErr) {
@@ -365,8 +386,8 @@ Deno.serve(async (req: Request) => {
             from: FROM,
             to: reqRow.email,
             subject: `You're approved — welcome to Bass Boss, ${firstName}!`,
-            text: buildWelcomeText(firstName, reqRow.org_name, orgCode, setupLink),
-            html: buildWelcomeHtml(firstName, reqRow.org_name, orgCode, setupLink),
+            text: buildWelcomeText(firstName, reqRow.org_name, teamOrgCode, setupLink),
+            html: buildWelcomeHtml(firstName, reqRow.org_name, teamOrgCode, setupLink),
             reply_to: "customerservice@getbassboss.com",
           }),
         });
@@ -382,7 +403,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // 9. Return confirmation page
-    return new Response(approvedPage(reqRow.org_name, orgCode, reqRow.name), {
+    return new Response(approvedPage(reqRow.org_name, teamOrgCode, reqRow.name), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
     });
