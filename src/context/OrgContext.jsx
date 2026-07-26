@@ -40,6 +40,11 @@ export function OrgProvider({ children }) {
   // ── Auth bootstrap ────────────────────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
+      // If the URL has a recovery hash, the ResetPasswordPage owns this flow —
+      // don't set authUser or isDirector would flash true and the org fetch
+      // would fire before the password form is even shown.
+      const isRecovery = window.location.hash.includes('type=recovery')
+      if (isRecovery) { setLoadingAuth(false); return }
       const user = session?.user ?? null
       // Preemptively mark org loading so there is never a render where
       // loadingAuth=false AND loadingOrg=false while rawOrg is still null.
@@ -51,7 +56,11 @@ export function OrgProvider({ children }) {
       setLoadingAuth(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // PASSWORD_RECOVERY is handled by ResetPasswordPage. Don't treat it as
+      // a normal sign-in — that would set isDirector and trigger the org
+      // fetch before the director has even set a password.
+      if (event === 'PASSWORD_RECOVERY') return
       const user = session?.user ?? null
       // Same guard for runtime sign-in (director signing in from JoinFlow).
       if (user) setLoadingOrg(true)

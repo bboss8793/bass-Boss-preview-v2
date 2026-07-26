@@ -4,6 +4,7 @@ import ClubDashboard from './apps/ClubDashboard'
 import TeamDashboard from './apps/TeamDashboard'
 import RegisterPage from './apps/RegisterPage'
 import LoginPage from './apps/LoginPage'
+import ResetPasswordPage from './apps/ResetPasswordPage'
 import LiveFeedPage from './apps/LiveFeedPage'
 import SalesPage from './apps/SalesPage'
 import JoinFlow from './components/shared/JoinFlow'
@@ -88,6 +89,7 @@ function GatedApp() {
         <Route path="/teams" element={<OrgGate orgType="team"><TeamDashboard /></OrgGate>} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
     </>
   )
