@@ -746,13 +746,12 @@ function DirectorTab({ orgId, tier = 'pro' }) {
     e.preventDefault()
     const errs = {}
     if (!newBoatName.trim()) errs.newBoatName = 'Boat name is required'
-    if (!newBoatCaptain.trim()) errs.newBoatCaptain = 'Captain name is required'
     setFormErrors(errs)
     if (Object.keys(errs).length > 0) return
     setSaving(true)
     const { error } = await supabase.from('boats').insert([{
       name: newBoatName.trim(),
-      captain_name: newBoatCaptain.trim(),
+      captain_name: newBoatCaptain.trim() || null,
       angler1_name: newBoatA1.trim(),
       angler2_name: newBoatA2.trim(),
       org_id: orgId,
@@ -969,12 +968,11 @@ function DirectorTab({ orgId, tier = 'pro' }) {
         <form onSubmit={addBoat} className="space-y-2 mb-4">
           <div className="grid grid-cols-2 gap-2">
             <Input value={newBoatName} onChange={(e) => { setNewBoatName(e.target.value); setFormErrors((p) => ({ ...p, newBoatName: undefined })) }} placeholder="Boat name" style={formErrors.newBoatName ? { borderColor: C.red } : {}} />
-            <Input value={newBoatCaptain} onChange={(e) => { setNewBoatCaptain(e.target.value); setFormErrors((p) => ({ ...p, newBoatCaptain: undefined })) }} placeholder="Captain name" style={formErrors.newBoatCaptain ? { borderColor: C.red } : {}} />
+            <Input value={newBoatCaptain} onChange={(e) => setNewBoatCaptain(e.target.value)} placeholder="Captain (optional)" />
             <Input value={newBoatA1} onChange={(e) => setNewBoatA1(e.target.value)} placeholder="Angler 1" />
             <Input value={newBoatA2} onChange={(e) => setNewBoatA2(e.target.value)} placeholder="Angler 2" />
           </div>
           {formErrors.newBoatName && <p className="text-xs font-bold" style={{ color: C.red }}>{formErrors.newBoatName}</p>}
-          {formErrors.newBoatCaptain && <p className="text-xs font-bold" style={{ color: C.red }}>{formErrors.newBoatCaptain}</p>}
           <GoldButton disabled={saving} className="w-full">+ Add Boat</GoldButton>
         </form>
         {boats.length === 0 ? (
@@ -985,7 +983,7 @@ function DirectorTab({ orgId, tier = 'pro' }) {
               <div key={b.id} className="rounded p-3" style={{ backgroundColor: C.bg, border: `1px solid ${C.border}` }}>
                 <p className="bb-title font-bold text-sm" style={{ color: C.text }}>{b.name}</p>
                 <p className="text-xs mt-0.5" style={{ color: C.muted }}>
-                  Capt: {b.captain_name} · {b.angler1_name}{b.angler2_name ? ` · ${b.angler2_name}` : ''}
+                  {b.captain_name ? `Capt: ${b.captain_name} · ` : ''}{b.angler1_name}{b.angler2_name ? ` · ${b.angler2_name}` : ''}
                 </p>
               </div>
             ))}
@@ -1150,6 +1148,8 @@ function CaptainTab({ orgId }) {
 
   async function handleBoatSelect(boat) {
     setSelectedBoat(boat)
+    if (anglerMode === 2 && !boat.angler2_name) setAnglerMode(1)
+    if (anglerMode === 3 && !boat.captain_name) setAnglerMode(1)
     loadCatches(boat.id)
   }
 
@@ -1174,7 +1174,7 @@ function CaptainTab({ orgId }) {
       if (!result) { setLengthError('Length out of range'); return }
       submitWeight = result.weight
       submitLength = rawLen
-      const anglerName = anglerMode === 1 ? selectedBoat.angler1_name : selectedBoat.angler2_name
+      const anglerName = anglerMode === 1 ? selectedBoat.angler1_name : anglerMode === 2 ? selectedBoat.angler2_name : selectedBoat.captain_name
       setPendingCatch({
         weight: submitWeight,
         length: submitLength,
@@ -1198,7 +1198,7 @@ function CaptainTab({ orgId }) {
 
     setLengthError(''); setCatchError('')
     setSaving(true)
-    const anglerName = anglerMode === 1 ? selectedBoat.angler1_name : selectedBoat.angler2_name
+    const anglerName = anglerMode === 1 ? selectedBoat.angler1_name : anglerMode === 2 ? selectedBoat.angler2_name : selectedBoat.captain_name
     let uploadedUrl = ''
     if (photoFile) {
       const ext = photoFile.name.split('.').pop() || 'jpg'
@@ -1348,7 +1348,7 @@ function CaptainTab({ orgId }) {
           {activeTournament ? (
             <ReceiptCard>
               {/* Proxy entry: angler selector at top of form */}
-              {selectedBoat.angler2_name ? (
+              {(selectedBoat.angler2_name || selectedBoat.captain_name) ? (
                 <div className="mb-3 pb-3" style={{ borderBottom: `1px solid ${C.border}` }}>
                   <p className="text-xs uppercase tracking-widest font-bold mb-2" style={{ color: C.muted }}>Entering catch for</p>
                   <div className="flex gap-2">
@@ -1356,22 +1356,36 @@ function CaptainTab({ orgId }) {
                       className="flex-1 py-2 rounded font-bold text-sm transition-colors"
                       style={{ backgroundColor: anglerMode === 1 ? C.gold : C.bg, color: anglerMode === 1 ? C.bg : C.text, border: `1px solid ${anglerMode === 1 ? C.gold : C.border}` }}
                     >{selectedBoat.angler1_name || 'Angler 1'}</button>
-                    <button type="button" onClick={() => setAnglerMode(2)}
-                      className="flex-1 py-2.5 rounded text-sm transition-colors"
-                      style={{ backgroundColor: anglerMode === 2 ? `${C.gold}22` : C.bg, color: anglerMode === 2 ? C.goldLight : C.muted, border: `1px solid ${anglerMode === 2 ? C.gold : C.border}`, fontWeight: anglerMode === 2 ? 700 : 500 }}
-                    >
-                      <span className="text-xs block" style={{ color: anglerMode === 2 ? C.gold : C.muted, opacity: 0.8 }}>Partner</span>
-                      {selectedBoat.angler2_name}
-                    </button>
+                    {selectedBoat.angler2_name && (
+                      <button type="button" onClick={() => setAnglerMode(2)}
+                        className="flex-1 py-2.5 rounded text-sm transition-colors"
+                        style={{ backgroundColor: anglerMode === 2 ? `${C.gold}22` : C.bg, color: anglerMode === 2 ? C.goldLight : C.muted, border: `1px solid ${anglerMode === 2 ? C.gold : C.border}`, fontWeight: anglerMode === 2 ? 700 : 500 }}
+                      >
+                        <span className="text-xs block" style={{ color: anglerMode === 2 ? C.gold : C.muted, opacity: 0.8 }}>Partner</span>
+                        {selectedBoat.angler2_name}
+                      </button>
+                    )}
+                    {selectedBoat.captain_name && (
+                      <button type="button" onClick={() => setAnglerMode(3)}
+                        className="flex-1 py-2.5 rounded text-sm transition-colors"
+                        style={{ backgroundColor: anglerMode === 3 ? `${C.gold}22` : C.bg, color: anglerMode === 3 ? C.goldLight : C.muted, border: `1px solid ${anglerMode === 3 ? C.gold : C.border}`, fontWeight: anglerMode === 3 ? 700 : 500 }}
+                      >
+                        <span className="text-xs block" style={{ color: anglerMode === 3 ? C.gold : C.muted, opacity: 0.8 }}>Captain</span>
+                        {selectedBoat.captain_name}
+                      </button>
+                    )}
                   </div>
                   {anglerMode === 2 && (
                     <p className="text-xs mt-2 text-center" style={{ color: C.gold }}>Catch will be credited to {selectedBoat.angler2_name}</p>
+                  )}
+                  {anglerMode === 3 && (
+                    <p className="text-xs mt-2 text-center" style={{ color: C.gold }}>Catch will be credited to {selectedBoat.captain_name}</p>
                   )}
                 </div>
               ) : null}
 
               <div className="flex items-center justify-between mb-2">
-                <SectionLabel>{anglerMode === 2 ? `Logging for ${selectedBoat.angler2_name}` : 'Log Catch'}</SectionLabel>
+                <SectionLabel>{anglerMode === 2 ? `Logging for ${selectedBoat.angler2_name}` : anglerMode === 3 ? `Logging for ${selectedBoat.captain_name}` : 'Log Catch'}</SectionLabel>
                 {isPaper && <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ color: C.gold, border: `1px solid ${C.gold}40` }}>Paper</span>}
               </div>
               {activeTournament.min_length_inches && (
@@ -1424,8 +1438,8 @@ function CaptainTab({ orgId }) {
                 {!isPaper && <PhotoCapture onCapture={(file, url) => { setPhotoFile(file); setPhoto(url) }} label="Photo (optional)" />}
                 <GoldButton disabled={saving || (isPaper && (!length || paperShortFish || !paperResult))} className="w-full">
                   {isPaper && paperResult
-                    ? `Review & Submit for ${anglerMode === 2 ? selectedBoat.angler2_name : (selectedBoat.angler1_name || 'you')} (${paperResult.weight.toFixed(2)} lbs)`
-                    : anglerMode === 2 ? `Log Catch for ${selectedBoat.angler2_name}` : 'Log Catch'}
+                    ? `Review & Submit for ${anglerMode === 2 ? selectedBoat.angler2_name : anglerMode === 3 ? selectedBoat.captain_name : (selectedBoat.angler1_name || 'you')} (${paperResult.weight.toFixed(2)} lbs)`
+                    : anglerMode === 2 ? `Log Catch for ${selectedBoat.angler2_name}` : anglerMode === 3 ? `Log Catch for ${selectedBoat.captain_name}` : 'Log Catch'}
                 </GoldButton>
               </form>
             </ReceiptCard>
@@ -1445,14 +1459,15 @@ function CaptainTab({ orgId }) {
                   const statusColor = status === 'approved' ? C.green : status === 'rejected' ? C.red : C.gold
                   const statusLabel = status === 'approved' ? 'Approved' : status === 'rejected' ? 'Rejected' : 'Pending'
                   const isPartner = c.angler_name === selectedBoat?.angler2_name
+                  const isCaptain = c.angler_name === selectedBoat?.captain_name
                   return (
                     <div key={c.id} className="rounded-lg p-3 space-y-1" style={{ backgroundColor: C.bg, border: `1px solid ${C.border}` }}>
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="text-sm font-bold" style={{ color: C.text }}>{parseFloat(c.weight).toFixed(2)} lbs</span>
                           {c.length_inches && <span className="text-xs ml-2" style={{ color: C.muted }}>{c.length_inches}"</span>}
-                          <span className="text-xs ml-2 font-medium" style={{ color: isPartner ? C.gold : C.muted }}>
-                            {c.angler_name}{isPartner ? ' (partner)' : ''}
+                          <span className="text-xs ml-2 font-medium" style={{ color: isPartner || isCaptain ? C.gold : C.muted }}>
+                            {c.angler_name}{isPartner ? ' (partner)' : isCaptain ? ' (captain)' : ''}
                           </span>
                         </div>
                         <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ color: statusColor, backgroundColor: `${statusColor}18`, border: `1px solid ${statusColor}40` }}>
