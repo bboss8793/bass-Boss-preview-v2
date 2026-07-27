@@ -11,6 +11,9 @@ import { supabase } from '../lib/supabase'
 import { activityRating } from '../utils/solunar'
 import { fetchLakeLevelFor } from '../utils/lakeLevel'
 import ShareParentLink from '../components/shared/ShareParentLink'
+import { playAlertSound, ALERT_MILESTONES } from '../utils/alertSound'
+import TournamentHistory from '../components/shared/TournamentHistory'
+import { PhotoViewer, CatchThumbnail } from '../components/shared/PhotoViewer'
 
 // ─── colour tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -25,7 +28,7 @@ const C = {
   red: '#ef4444',
 }
 
-const CLUB_TABS = ['Director', 'Captain', 'Angler', 'Feed', 'Conditions']
+const CLUB_TABS = ['Director', 'Captain', 'Angler', 'History', 'Feed', 'Conditions']
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function SectionLabel({ children }) {
@@ -147,11 +150,9 @@ function computeStandings(catches, boats, tournament) {
 
 // ─── TOURNAMENT COUNTDOWN ─────────────────────────────────────────────────────
 const COUNTDOWN_MILESTONES = [
-  { secs: 7200, label: '2 hours remaining' },
-  { secs: 3600, label: '1 hour remaining' },
-  { secs: 1800, label: '30 minutes remaining' },
-  { secs: 900, label: '15 minutes remaining' },
-  { secs: 300, label: '5 minutes remaining' },
+  { secs: 7200, label: '2 hours remaining', alert: false },
+  { secs: 3600, label: '1 hour remaining', alert: false },
+  ...ALERT_MILESTONES,
 ]
 
 function formatCountdown(remaining) {
@@ -166,6 +167,7 @@ function formatCountdown(remaining) {
 function useTournamentCountdown(endTime, finalCountdownSecs = 60) {
   const [remaining, setRemaining] = useState(null)
   const [banner, setBanner] = useState(null)
+  const [alertBanner, setAlertBanner] = useState(null)
   const firedRef = useRef(new Set())
   const bannerTimerRef = useRef(null)
 
@@ -181,9 +183,14 @@ function useTournamentCountdown(endTime, finalCountdownSecs = 60) {
       for (const m of COUNTDOWN_MILESTONES) {
         if (!firedRef.current.has(m.secs) && r <= m.secs) {
           firedRef.current.add(m.secs)
-          setBanner(m.label)
-          clearTimeout(bannerTimerRef.current)
-          bannerTimerRef.current = setTimeout(() => setBanner(null), 15000)
+          if (m.alert) {
+            setAlertBanner(m.label)
+            playAlertSound()
+          } else {
+            setBanner(m.label)
+            clearTimeout(bannerTimerRef.current)
+            bannerTimerRef.current = setTimeout(() => setBanner(null), 15000)
+          }
         }
       }
     }
@@ -195,7 +202,9 @@ function useTournamentCountdown(endTime, finalCountdownSecs = 60) {
   return {
     remaining,
     banner,
+    alertBanner,
     dismissBanner: () => { clearTimeout(bannerTimerRef.current); setBanner(null) },
+    dismissAlertBanner: () => setAlertBanner(null),
     isFinalCountdown: remaining !== null && remaining > 0 && remaining <= finalCountdownSecs,
     isOver: remaining !== null && remaining <= 0,
   }
@@ -203,7 +212,7 @@ function useTournamentCountdown(endTime, finalCountdownSecs = 60) {
 
 function TournamentCountdown({ tournament, tourneyStatus }) {
   const finalSecs = parseInt(tournament?.final_countdown_seconds) || 60
-  const { remaining, banner, dismissBanner, isFinalCountdown, isOver } = useTournamentCountdown(
+  const { remaining, banner, alertBanner, dismissBanner, dismissAlertBanner, isFinalCountdown, isOver } = useTournamentCountdown(
     tournament?.end_time || null,
     finalSecs,
   )
@@ -212,6 +221,28 @@ function TournamentCountdown({ tournament, tourneyStatus }) {
 
   return (
     <div className="space-y-3">
+      {alertBanner && (
+        <div
+          className="rounded-lg px-4 py-4 flex items-center justify-between animate-pulse"
+          style={{ backgroundColor: '#1a1000', border: `2px solid ${C.gold}`, boxShadow: `0 0 30px ${C.gold}40` }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full animate-pulse shrink-0" style={{ backgroundColor: C.gold }}></div>
+            <div>
+              <span className="font-bold text-base uppercase tracking-wide block" style={{ color: C.goldLight }}>{alertBanner}</span>
+              <span className="text-xs" style={{ color: C.muted }}>Tournament ending soon — head to weigh-in</span>
+            </div>
+          </div>
+          <button
+            onClick={dismissAlertBanner}
+            className="text-xs px-2 py-0.5 rounded ml-3"
+            style={{ color: C.muted, border: `1px solid ${C.border}` }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {banner && (
         <div
           className="rounded-lg px-4 py-3 flex items-center justify-between"
@@ -320,6 +351,7 @@ function WeighInStation({ boats, tournament, orgId, onSaved }) {
   const [weight, setWeight] = useState('')
   const [length, setLength] = useState('')
   const [lengthError, setLengthError] = useState('')
+  const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
 
   const minLength = tournament?.min_length_inches ? parseFloat(tournament.min_length_inches) : null
@@ -332,12 +364,18 @@ function WeighInStation({ boats, tournament, orgId, onSaved }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!boatId || !anglerName.trim()) return
+    const errs = []
+    if (!boatId) errs.push('Select a boat')
+    if (!anglerName.trim()) errs.push('Enter angler name')
+    if (!isPaper && (!weight || parseFloat(weight) <= 0)) errs.push('Enter a valid weight')
+    if (isPaper && (!length || parseFloat(length) <= 0)) errs.push('Enter fish length')
+    if (errs.length > 0) { setFormError(errs.join(' · ')); return }
+    setFormError('')
 
     let submitWeight, submitLength
     if (isPaper) {
       const rawLen = parseFloat(length)
-      if (!rawLen || isNaN(rawLen) || rawLen <= 0) return
+      if (!rawLen || isNaN(rawLen) || rawLen <= 0) { setFormError('Enter a valid length'); return }
       if (minLength && rawLen < minLength) { setLengthError(`Short fish — does not count (min ${minLength}")`); return }
       const result = lookupPaperWeight(rawLen)
       if (!result) { setLengthError('Length out of range'); return }
@@ -345,7 +383,7 @@ function WeighInStation({ boats, tournament, orgId, onSaved }) {
       submitLength = rawLen
     } else {
       const w = parseFloat(weight)
-      if (!w || w <= 0) return
+      if (!w || w <= 0) { setFormError('Enter a valid weight'); return }
       if (minLength) {
         const l = parseFloat(length)
         if (!l || l < minLength) { setLengthError(`Short fish — does not count (min ${minLength}")`); return }
@@ -354,7 +392,7 @@ function WeighInStation({ boats, tournament, orgId, onSaved }) {
       submitLength = minLength ? parseFloat(length) : null
     }
 
-    setLengthError('')
+    setLengthError(''); setFormError('')
     setSaving(true)
     const { error } = await supabase.from('catches').insert([{
       tournament_id: tournament.id,
@@ -365,7 +403,7 @@ function WeighInStation({ boats, tournament, orgId, onSaved }) {
       org_id: orgId,
     }])
     if (error) { alert(`Failed to log catch: ${error.message}`) }
-    else { setAnglerName(''); setWeight(''); setLength(''); setLengthError(''); onSaved() }
+    else { setAnglerName(''); setWeight(''); setLength(''); setLengthError(''); setFormError(''); onSaved() }
     setSaving(false)
   }
 
@@ -415,6 +453,9 @@ function WeighInStation({ boats, tournament, orgId, onSaved }) {
           )}
         </>
       )}
+      {formError && (
+        <p className="text-xs text-center font-bold py-1.5 rounded" style={{ color: C.red, backgroundColor: '#1a0000', border: `1px solid ${C.red}40` }}>{formError}</p>
+      )}
       {lengthError && (
         <p className="text-xs text-center font-bold py-1.5 rounded" style={{ color: C.red, backgroundColor: '#1a0000', border: `1px solid ${C.red}40` }}>{lengthError}</p>
       )}
@@ -432,7 +473,7 @@ const REJECTION_REASONS = [
   'Fish not on left side', 'Other',
 ]
 
-function PaperReviewQueue({ tournament, boats, onReviewed }) {
+function PaperReviewQueue({ tournament, boats, onReviewed, readOnly = false }) {
   const [queue, setQueue] = useState([])
   const [loading, setLoading] = useState(true)
   const [reviewing, setReviewing] = useState(null)
@@ -440,24 +481,28 @@ function PaperReviewQueue({ tournament, boats, onReviewed }) {
   const [saving, setSaving] = useState(false)
   const [photoModal, setPhotoModal] = useState(null)
 
-  useEffect(() => { loadQueue() }, [tournament?.id])
+  useEffect(() => { loadQueue() }, [tournament?.id, readOnly])
 
   async function loadQueue() {
     setLoading(true)
-    const { data } = await supabase.from('catches').select('*')
-      .eq('tournament_id', tournament.id).eq('review_status', 'pending_review')
+    let query = supabase.from('catches').select('*')
+      .eq('tournament_id', tournament.id)
       .order('created_at', { ascending: true })
+    if (!readOnly) {
+      query = query.eq('review_status', 'pending_review')
+    }
+    const { data } = await query
     setQueue(data || [])
     setLoading(false)
   }
 
   useEffect(() => {
-    if (!tournament?.id) return
+    if (!tournament?.id || readOnly) return
     const ch = supabase.channel('club-review-queue-' + tournament.id)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'catches', filter: `tournament_id=eq.${tournament.id}` }, () => loadQueue())
       .subscribe()
     return () => supabase.removeChannel(ch)
-  }, [tournament?.id])
+  }, [tournament?.id, readOnly])
 
   async function approve(c) {
     setSaving(true)
@@ -517,30 +562,34 @@ function PaperReviewQueue({ tournament, boats, onReviewed }) {
               <div className="rounded-lg p-6 text-center text-xs" style={{ backgroundColor: C.bg, border: `1px solid ${C.border}`, color: C.muted }}>No photo attached</div>
             )}
 
-            <GoldButton disabled={saving} onClick={() => approve(reviewing)} className="w-full">Approve</GoldButton>
+            {readOnly ? (
+              <button onClick={() => { setReviewing(null); setRejReason('') }} className="w-full py-3 rounded-lg text-sm font-bold uppercase tracking-widest transition hover:opacity-80" style={{ backgroundColor: C.card, color: C.muted, border: `1px solid ${C.border}` }}>Close</button>
+            ) : (<>
+              <GoldButton disabled={saving} onClick={() => approve(reviewing)} className="w-full">Approve</GoldButton>
 
-            <div>
-              <p className="text-xs mb-1.5 font-bold uppercase tracking-wider" style={{ color: C.muted }}>Reject — select reason</p>
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {REJECTION_REASONS.map((r) => (
-                  <button key={r} type="button" onClick={() => setRejReason(r)}
-                    className="px-2 py-1 rounded text-xs font-bold transition-colors"
-                    style={{ backgroundColor: rejReason === r ? C.red : C.bg, color: rejReason === r ? '#fff' : C.muted, border: `1px solid ${rejReason === r ? C.red : C.border}` }}
-                  >{r}</button>
-                ))}
+              <div>
+                <p className="text-xs mb-1.5 font-bold uppercase tracking-wider" style={{ color: C.muted }}>Reject — select reason</p>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {REJECTION_REASONS.map((r) => (
+                    <button key={r} type="button" onClick={() => setRejReason(r)}
+                      className="px-2 py-1 rounded text-xs font-bold transition-colors"
+                      style={{ backgroundColor: rejReason === r ? C.red : C.bg, color: rejReason === r ? '#fff' : C.muted, border: `1px solid ${rejReason === r ? C.red : C.border}` }}
+                    >{r}</button>
+                  ))}
+                </div>
+                <GoldButton danger disabled={!rejReason || saving} onClick={() => reject(reviewing)} className="w-full">
+                  Reject — {rejReason || 'select reason above'}
+                </GoldButton>
               </div>
-              <GoldButton danger disabled={!rejReason || saving} onClick={() => reject(reviewing)} className="w-full">
-                Reject — {rejReason || 'select reason above'}
-              </GoldButton>
-            </div>
+            </>)}
           </div>
         </div>
       )}
 
       <ReceiptCard>
         <div className="flex items-center justify-between mb-3">
-          <SectionLabel>Photo Review Queue</SectionLabel>
-          {queue.length > 0 && (
+          <SectionLabel>{readOnly ? 'All Catch Photos' : 'Photo Review Queue'}</SectionLabel>
+          {!readOnly && queue.length > 0 && (
             <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ backgroundColor: `${C.gold}20`, color: C.gold, border: `1px solid ${C.gold}40` }}>
               {queue.length} pending
             </span>
@@ -549,7 +598,7 @@ function PaperReviewQueue({ tournament, boats, onReviewed }) {
         {loading ? (
           <p className="text-xs text-center py-4" style={{ color: C.muted }}>Loading…</p>
         ) : queue.length === 0 ? (
-          <p className="text-xs text-center py-4" style={{ color: C.muted }}>No catches pending review.</p>
+          <p className="text-xs text-center py-4" style={{ color: C.muted }}>{readOnly ? 'No catches with photos for this tournament.' : 'No catches pending review.'}</p>
         ) : (
           <div className="space-y-2">
             {queue.map((c) => {
@@ -569,7 +618,7 @@ function PaperReviewQueue({ tournament, boats, onReviewed }) {
                     <p className="text-xs truncate" style={{ color: C.muted }}>{boat?.name || 'Unknown boat'}</p>
                     <p className="text-xs font-mono" style={{ color: C.goldLight }}>{c.length_inches}" → {parseFloat(c.weight).toFixed(2)} lbs</p>
                   </div>
-                  <span className="text-xs font-bold" style={{ color: C.gold }}>Review ›</span>
+                  <span className="text-xs font-bold" style={{ color: C.gold }}>{readOnly ? 'View ›' : 'Review ›'}</span>
                 </button>
               )
             })}
@@ -618,6 +667,7 @@ function DirectorTab({ orgId, tier = 'pro' }) {
   const [newBoatA2, setNewBoatA2] = useState('')
   const [saving, setSaving] = useState(false)
   const [bannerDismissed, setBannerDismissed] = useState(false)
+  const [formErrors, setFormErrors] = useState({})
 
   useEffect(() => { load() }, [])
 
@@ -645,7 +695,14 @@ function DirectorTab({ orgId, tier = 'pro' }) {
 
   async function createTournament(e) {
     e.preventDefault()
-    if (!newName.trim()) return
+    const errs = {}
+    if (!newName.trim()) errs.newName = 'Tournament name is required'
+    if (!newDate) errs.newDate = 'Tournament date is required'
+    if (!newStartTime) errs.newStartTime = 'Start time is required'
+    if (!newEndTime) errs.newEndTime = 'End time is required'
+    if (newStartTime && newEndTime && new Date(newEndTime) <= new Date(newStartTime)) errs.newEndTime = 'End time must be after start time'
+    setFormErrors(errs)
+    if (Object.keys(errs).length > 0) return
     setSaving(true)
     const { error } = await supabase.from('tournaments').insert([{
       name: newName.trim(),
@@ -687,7 +744,11 @@ function DirectorTab({ orgId, tier = 'pro' }) {
 
   async function addBoat(e) {
     e.preventDefault()
-    if (!newBoatName.trim() || !newBoatCaptain.trim()) return
+    const errs = {}
+    if (!newBoatName.trim()) errs.newBoatName = 'Boat name is required'
+    if (!newBoatCaptain.trim()) errs.newBoatCaptain = 'Captain name is required'
+    setFormErrors(errs)
+    if (Object.keys(errs).length > 0) return
     setSaving(true)
     const { error } = await supabase.from('boats').insert([{
       name: newBoatName.trim(),
@@ -787,17 +848,24 @@ function DirectorTab({ orgId, tier = 'pro' }) {
       <ReceiptCard>
         <SectionLabel>Tournament Control</SectionLabel>
         <form onSubmit={createTournament} className="space-y-2 mb-4">
-          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Tournament name" />
+          <Input value={newName} onChange={(e) => { setNewName(e.target.value); setFormErrors((p) => ({ ...p, newName: undefined })) }} placeholder="Tournament name" style={formErrors.newName ? { borderColor: C.red } : {}} />
+          {formErrors.newName && <p className="text-xs font-bold" style={{ color: C.red }}>{formErrors.newName}</p>}
           <LakeSelect value={newLake} onChange={setNewLake} />
-          <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+          <div>
+            <p className="text-xs mb-1" style={{ color: C.muted }}>Tournament Date</p>
+            <Input type="date" value={newDate} onChange={(e) => { setNewDate(e.target.value); setFormErrors((p) => ({ ...p, newDate: undefined })) }} style={formErrors.newDate ? { borderColor: C.red } : {}} />
+            {formErrors.newDate && <p className="text-xs font-bold" style={{ color: C.red }}>{formErrors.newDate}</p>}
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="text-xs mb-1" style={{ color: C.muted }}>Start time</p>
-              <Input type="datetime-local" value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} />
+              <Input type="datetime-local" value={newStartTime} onChange={(e) => { setNewStartTime(e.target.value); setFormErrors((p) => ({ ...p, newStartTime: undefined })) }} style={formErrors.newStartTime ? { borderColor: C.red } : {}} />
+              {formErrors.newStartTime && <p className="text-xs font-bold" style={{ color: C.red }}>{formErrors.newStartTime}</p>}
             </div>
             <div>
               <p className="text-xs mb-1" style={{ color: C.muted }}>End time</p>
-              <Input type="datetime-local" value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} />
+              <Input type="datetime-local" value={newEndTime} onChange={(e) => { setNewEndTime(e.target.value); setFormErrors((p) => ({ ...p, newEndTime: undefined })) }} style={formErrors.newEndTime ? { borderColor: C.red } : {}} />
+              {formErrors.newEndTime && <p className="text-xs font-bold" style={{ color: C.red }}>{formErrors.newEndTime}</p>}
             </div>
           </div>
           <div>
@@ -900,11 +968,13 @@ function DirectorTab({ orgId, tier = 'pro' }) {
         <SectionLabel>Boats Roster</SectionLabel>
         <form onSubmit={addBoat} className="space-y-2 mb-4">
           <div className="grid grid-cols-2 gap-2">
-            <Input value={newBoatName} onChange={(e) => setNewBoatName(e.target.value)} placeholder="Boat name" />
-            <Input value={newBoatCaptain} onChange={(e) => setNewBoatCaptain(e.target.value)} placeholder="Captain name" />
+            <Input value={newBoatName} onChange={(e) => { setNewBoatName(e.target.value); setFormErrors((p) => ({ ...p, newBoatName: undefined })) }} placeholder="Boat name" style={formErrors.newBoatName ? { borderColor: C.red } : {}} />
+            <Input value={newBoatCaptain} onChange={(e) => { setNewBoatCaptain(e.target.value); setFormErrors((p) => ({ ...p, newBoatCaptain: undefined })) }} placeholder="Captain name" style={formErrors.newBoatCaptain ? { borderColor: C.red } : {}} />
             <Input value={newBoatA1} onChange={(e) => setNewBoatA1(e.target.value)} placeholder="Angler 1" />
             <Input value={newBoatA2} onChange={(e) => setNewBoatA2(e.target.value)} placeholder="Angler 2" />
           </div>
+          {formErrors.newBoatName && <p className="text-xs font-bold" style={{ color: C.red }}>{formErrors.newBoatName}</p>}
+          {formErrors.newBoatCaptain && <p className="text-xs font-bold" style={{ color: C.red }}>{formErrors.newBoatCaptain}</p>}
           <GoldButton disabled={saving} className="w-full">+ Add Boat</GoldButton>
         </form>
         {boats.length === 0 ? (
@@ -1003,6 +1073,16 @@ function DirectorTab({ orgId, tier = 'pro' }) {
         <PaperReviewQueue tournament={activeTournament} boats={boats} onReviewed={load} />
       )}
 
+      {activeTournament?.is_paper_tournament && tourneyState?.status === 'ended' && (
+        <ReceiptCard>
+          <SectionLabel>Paper Tournament Catches</SectionLabel>
+          <p className="text-xs mb-3" style={{ color: C.muted }}>
+            This tournament has ended. Review catch photos below.
+          </p>
+          <PaperReviewQueue tournament={activeTournament} boats={boats} onReviewed={load} readOnly />
+        </ReceiptCard>
+      )}
+
       <div className="pt-2 pb-4 text-center">
         <button
           onClick={() => { signOut(); navigate('/') }}
@@ -1026,6 +1106,7 @@ function CaptainTab({ orgId }) {
   const [weight, setWeight] = useState('')
   const [length, setLength] = useState('')
   const [lengthError, setLengthError] = useState('')
+  const [catchError, setCatchError] = useState('')
   const [photo, setPhoto] = useState(null)
   const [photoFile, setPhotoFile] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -1078,7 +1159,8 @@ function CaptainTab({ orgId }) {
 
   async function logCatch(e) {
     e.preventDefault()
-    if (!selectedBoat || !activeTournament) return
+    if (!selectedBoat || !activeTournament) { setCatchError('No boat or tournament selected'); return }
+    setCatchError('')
 
     const minLen = activeTournament.min_length_inches ? parseFloat(activeTournament.min_length_inches) : null
     const isPaperMode = activeTournament.is_paper_tournament
@@ -1086,7 +1168,7 @@ function CaptainTab({ orgId }) {
 
     if (isPaperMode) {
       const rawLen = parseFloat(length)
-      if (!rawLen || isNaN(rawLen)) return
+      if (!rawLen || isNaN(rawLen)) { setCatchError('Enter a valid length'); return }
       if (minLen && rawLen < minLen) { setLengthError('Short fish — does not count'); return }
       const result = lookupPaperWeight(rawLen)
       if (!result) { setLengthError('Length out of range'); return }
@@ -1106,7 +1188,7 @@ function CaptainTab({ orgId }) {
     }
 
     const w = parseFloat(weight)
-    if (!w || w <= 0) return
+    if (!w || w <= 0) { setCatchError('Enter a valid weight'); return }
     if (minLen) {
       const rawLen = parseFloat(length)
       if (!rawLen || rawLen < minLen) { setLengthError(`Short fish — does not count (min ${minLen}")`); return }
@@ -1114,7 +1196,7 @@ function CaptainTab({ orgId }) {
     submitWeight = w
     submitLength = minLen ? parseFloat(length) : null
 
-    setLengthError('')
+    setLengthError(''); setCatchError('')
     setSaving(true)
     const anglerName = anglerMode === 1 ? selectedBoat.angler1_name : selectedBoat.angler2_name
     let uploadedUrl = ''
@@ -1137,7 +1219,7 @@ function CaptainTab({ orgId }) {
       review_status: 'approved',
       org_id: orgId,
     }])
-    setWeight(''); setLength(''); setPhoto(null); setPhotoFile(null); setLengthError('')
+    setWeight(''); setLength(''); setPhoto(null); setPhotoFile(null); setLengthError(''); setCatchError('')
     loadCatches(selectedBoat.id)
     setSaving(false)
   }
@@ -1324,6 +1406,7 @@ function CaptainTab({ orgId }) {
                       ) : null
                     )}
                     {lengthError && <p className="text-xs text-center font-bold py-1.5 rounded" style={{ color: C.red, backgroundColor: '#1a0000', border: `1px solid ${C.red}40` }}>{lengthError}</p>}
+                    {catchError && <p className="text-xs text-center font-bold py-1.5 rounded" style={{ color: C.red, backgroundColor: '#1a0000', border: `1px solid ${C.red}40` }}>{catchError}</p>}
                   </>
                 ) : (
                   <>
@@ -1335,6 +1418,7 @@ function CaptainTab({ orgId }) {
                       />
                     )}
                     {lengthError && <p className="text-xs text-center font-bold py-1.5 rounded" style={{ color: C.red, backgroundColor: '#1a0000', border: `1px solid ${C.red}40` }}>{lengthError}</p>}
+                    {catchError && <p className="text-xs text-center font-bold py-1.5 rounded" style={{ color: C.red, backgroundColor: '#1a0000', border: `1px solid ${C.red}40` }}>{catchError}</p>}
                   </>
                 )}
                 {!isPaper && <PhotoCapture onCapture={(file, url) => { setPhotoFile(file); setPhoto(url) }} label="Photo (optional)" />}
@@ -1407,6 +1491,7 @@ function AnglerTab({ orgId }) {
   const [tourneyState, setTourneyState] = useState(null)
   const [catches, setCatches] = useState([])
   const [loading, setLoading] = useState(true)
+  const [anglerPhotoViewer, setAnglerPhotoViewer] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -1481,16 +1566,18 @@ function AnglerTab({ orgId }) {
             {catches.map((c, i) => (
               <div key={c.id} className="flex items-center gap-3 px-3 py-2 rounded" style={{ backgroundColor: C.bg, border: `1px solid ${C.border}` }}>
                 <span className="text-xs font-bold w-6 text-center" style={{ color: i === 0 ? C.goldLight : C.muted }}>#{i + 1}</span>
+                <CatchThumbnail photoUrl={c.photo_url} onClick={() => setAnglerPhotoViewer(c.photo_url)} />
                 <div className="flex-1">
                   <span className="font-bold text-sm" style={{ color: C.text }}>{parseFloat(c.weight).toFixed(2)} lbs</span>
+                  {c.length_inches && <span className="text-xs ml-2" style={{ color: C.muted }}>{parseFloat(c.length_inches).toFixed(1)}"</span>}
                   <span className="text-xs ml-2" style={{ color: C.muted }}>{c.angler_name}</span>
                 </div>
-                {c.photo_url && <img src={c.photo_url} alt="" className="w-10 h-10 rounded object-cover" style={{ border: `1px solid ${C.border}` }} />}
               </div>
             ))}
           </div>
         )}
       </ReceiptCard>
+      <PhotoViewer photoUrl={anglerPhotoViewer} onClose={() => setAnglerPhotoViewer(null)} />
     </div>
   )
 }
@@ -1960,6 +2047,7 @@ export default function ClubDashboard() {
     Director: 'Tournament Control & Standings',
     Captain: 'Boat Logging & Controls',
     Angler: 'Tournament View',
+    History: 'Past Tournament Catches',
     Feed: 'Live Feed — No Login Required',
     Conditions: 'Weather, Lake & Solunar',
   }
@@ -1990,6 +2078,7 @@ export default function ClubDashboard() {
         {activeTab === 'Director' && isDirector && <DirectorTab orgId={orgId} tier={org?.tier || 'pro'} />}
         {activeTab === 'Captain' && <CaptainTab orgId={orgId} />}
         {activeTab === 'Angler' && <AnglerTab orgId={orgId} />}
+        {activeTab === 'History' && <TournamentHistory orgId={orgId} />}
         {activeTab === 'Feed' && <FeedTab orgId={orgId} />}
         {activeTab === 'Conditions' && <ConditionsTab orgId={orgId} />}
       </div>

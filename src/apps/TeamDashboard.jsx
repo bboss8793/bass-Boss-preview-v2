@@ -11,6 +11,9 @@ import { supabase } from '../lib/supabase'
 import { activityRating, formatHour } from '../utils/solunar'
 import { fetchLakeLevelFor } from '../utils/lakeLevel'
 import ShareParentLink from '../components/shared/ShareParentLink'
+import { playAlertSound, ALERT_MILESTONES } from '../utils/alertSound'
+import TournamentHistory from '../components/shared/TournamentHistory'
+import { PhotoViewer, CatchThumbnail } from '../components/shared/PhotoViewer'
 
 // ─── colour tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -25,7 +28,7 @@ const C = {
   red: '#ef4444',
 }
 
-const TABS = ['Coach', 'Captain', 'Angler', 'Parent', 'Conditions', 'Course']
+const TABS = ['Coach', 'Captain', 'Angler', 'History', 'Parent', 'Conditions', 'Course']
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function SectionLabel({ children }) {
@@ -117,11 +120,9 @@ function computeStandings(catches, boats, tournament) {
 
 // ─── TOURNAMENT COUNTDOWN ─────────────────────────────────────────────────────
 const COUNTDOWN_MILESTONES = [
-  { secs: 7200, label: '2 hours remaining' },
-  { secs: 3600, label: '1 hour remaining' },
-  { secs: 1800, label: '30 minutes remaining' },
-  { secs: 900, label: '15 minutes remaining' },
-  { secs: 300, label: '5 minutes remaining' },
+  { secs: 7200, label: '2 hours remaining', alert: false },
+  { secs: 3600, label: '1 hour remaining', alert: false },
+  ...ALERT_MILESTONES,
 ]
 
 function formatCountdown(remaining) {
@@ -136,13 +137,13 @@ function formatCountdown(remaining) {
 function useTournamentCountdown(endTime, finalCountdownSecs = 60) {
   const [remaining, setRemaining] = useState(null)
   const [banner, setBanner] = useState(null)
+  const [alertBanner, setAlertBanner] = useState(null)
   const firedRef = useRef(new Set())
   const bannerTimerRef = useRef(null)
 
   useEffect(() => {
     if (!endTime) { setRemaining(null); return }
     const end = new Date(endTime)
-    // Pre-seed milestones already in the past so they don't fire on load
     const init = Math.round((end - Date.now()) / 1000)
     firedRef.current = new Set(COUNTDOWN_MILESTONES.filter((m) => init < m.secs).map((m) => m.secs))
 
@@ -152,9 +153,14 @@ function useTournamentCountdown(endTime, finalCountdownSecs = 60) {
       for (const m of COUNTDOWN_MILESTONES) {
         if (!firedRef.current.has(m.secs) && r <= m.secs) {
           firedRef.current.add(m.secs)
-          setBanner(m.label)
-          clearTimeout(bannerTimerRef.current)
-          bannerTimerRef.current = setTimeout(() => setBanner(null), 15000)
+          if (m.alert) {
+            setAlertBanner(m.label)
+            playAlertSound()
+          } else {
+            setBanner(m.label)
+            clearTimeout(bannerTimerRef.current)
+            bannerTimerRef.current = setTimeout(() => setBanner(null), 15000)
+          }
         }
       }
     }
@@ -166,7 +172,9 @@ function useTournamentCountdown(endTime, finalCountdownSecs = 60) {
   return {
     remaining,
     banner,
+    alertBanner,
     dismissBanner: () => { clearTimeout(bannerTimerRef.current); setBanner(null) },
+    dismissAlertBanner: () => setAlertBanner(null),
     isFinalCountdown: remaining !== null && remaining > 0 && remaining <= finalCountdownSecs,
     isOver: remaining !== null && remaining <= 0,
   }
@@ -174,7 +182,7 @@ function useTournamentCountdown(endTime, finalCountdownSecs = 60) {
 
 function TournamentCountdown({ tournament, tourneyStatus }) {
   const finalSecs = parseInt(tournament?.final_countdown_seconds) || 60
-  const { remaining, banner, dismissBanner, isFinalCountdown, isOver } = useTournamentCountdown(
+  const { remaining, banner, alertBanner, dismissBanner, dismissAlertBanner, isFinalCountdown, isOver } = useTournamentCountdown(
     tournament?.end_time || null,
     finalSecs,
   )
@@ -183,7 +191,28 @@ function TournamentCountdown({ tournament, tourneyStatus }) {
 
   return (
     <div className="space-y-3">
-      {/* Milestone announcement banner */}
+      {alertBanner && (
+        <div
+          className="rounded-lg px-4 py-4 flex items-center justify-between animate-pulse"
+          style={{ backgroundColor: '#1a1000', border: `2px solid ${C.gold}`, boxShadow: `0 0 30px ${C.gold}40` }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full animate-pulse shrink-0" style={{ backgroundColor: C.gold }}></div>
+            <div>
+              <span className="font-bold text-base uppercase tracking-wide block" style={{ color: C.goldLight }}>{alertBanner}</span>
+              <span className="text-xs" style={{ color: C.muted }}>Tournament ending soon — head to weigh-in</span>
+            </div>
+          </div>
+          <button
+            onClick={dismissAlertBanner}
+            className="text-xs px-2 py-0.5 rounded ml-3"
+            style={{ color: C.muted, border: `1px solid ${C.border}` }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {banner && (
         <div
           className="rounded-lg px-4 py-3 flex items-center justify-between"
@@ -289,6 +318,9 @@ function CoachTab({ orgId, tier = 'pro' }) {
   const [newBoatTeam, setNewBoatTeam] = useState('')
   const [saving, setSaving] = useState(false)
   const [bannerDismissed, setBannerDismissed] = useState(false)
+  const [formErrors, setFormErrors] = useState({})
+  const [rosterMode, setRosterMode] = useState('open')
+  const [orgTeam, setOrgTeam] = useState(null)
 
   useEffect(() => {
     load()
@@ -326,12 +358,21 @@ function CoachTab({ orgId, tier = 'pro' }) {
       setActiveTournament(active || null)
       setTourneyState(ts.data)
     }
+    const orgTeam = (tm.data || [])[0]
+    if (orgTeam) { setOrgTeam(orgTeam); setRosterMode(orgTeam.roster_mode || 'open') }
     setLoading(false)
   }
 
   async function createTournament(e) {
     e.preventDefault()
-    if (!newTourneyName.trim()) return
+    const errs = {}
+    if (!newTourneyName.trim()) errs.newTourneyName = 'Tournament name is required'
+    if (!newTourneyDate) errs.newTourneyDate = 'Tournament date is required'
+    if (!newTourneyStartTime) errs.newTourneyStartTime = 'Start time is required'
+    if (!newTourneyEndTime) errs.newTourneyEndTime = 'End time is required'
+    if (newTourneyStartTime && newTourneyEndTime && new Date(newTourneyEndTime) <= new Date(newTourneyStartTime)) errs.newTourneyEndTime = 'End time must be after start time'
+    setFormErrors(errs)
+    if (Object.keys(errs).length > 0) return
     setSaving(true)
     const { data, error } = await supabase
       .from('tournaments')
@@ -378,9 +419,16 @@ function CoachTab({ orgId, tier = 'pro' }) {
     load()
   }
 
+  async function updateRosterMode(mode) {
+    setRosterMode(mode)
+    if (!orgTeam) return
+    await supabase.from('teams').update({ roster_mode: mode }).eq('id', orgTeam.id)
+  }
+
   async function createTeam(e) {
     e.preventDefault()
-    if (!newTeamName.trim()) return
+    if (!newTeamName.trim()) { setFormErrors({ newTeamName: 'Team name is required' }); return }
+    setFormErrors({})
     setSaving(true)
     const { error } = await supabase.from('teams').insert([{ name: newTeamName.trim(), org_id: orgId }])
     if (error) { alert(`Failed to create team: ${error.message}`) }
@@ -390,7 +438,11 @@ function CoachTab({ orgId, tier = 'pro' }) {
 
   async function addMember(e) {
     e.preventDefault()
-    if (!newMemberName.trim() || !newMemberTeam) return
+    const errs = {}
+    if (!newMemberName.trim()) errs.newMemberName = 'Member name is required'
+    if (!newMemberTeam) errs.newMemberTeam = 'Select a team'
+    setFormErrors(errs)
+    if (Object.keys(errs).length > 0) return
     setSaving(true)
     const { error } = await supabase.from('team_members').insert([{ name: newMemberName.trim(), team_id: newMemberTeam, org_id: orgId }])
     if (error) { alert(`Failed to add member: ${error.message}`) }
@@ -400,7 +452,11 @@ function CoachTab({ orgId, tier = 'pro' }) {
 
   async function addBoat(e) {
     e.preventDefault()
-    if (!newBoatName.trim() || !newBoatCaptain.trim()) return
+    const errs = {}
+    if (!newBoatName.trim()) errs.newBoatName = 'Boat name is required'
+    if (!newBoatCaptain.trim()) errs.newBoatCaptain = 'Captain name is required'
+    setFormErrors(errs)
+    if (Object.keys(errs).length > 0) return
     setSaving(true)
     const { error } = await supabase.from('boats').insert([{
       name: newBoatName.trim(),
@@ -551,18 +607,25 @@ function CoachTab({ orgId, tier = 'pro' }) {
       <ReceiptCard>
         <SectionLabel>Tournament Control</SectionLabel>
         <form onSubmit={createTournament} className="space-y-2 mb-4">
-          <Input value={newTourneyName} onChange={(e) => setNewTourneyName(e.target.value)} placeholder="Tournament name" />
+          <Input value={newTourneyName} onChange={(e) => { setNewTourneyName(e.target.value); setFormErrors((p) => ({ ...p, newTourneyName: undefined })) }} placeholder="Tournament name" />
+          {formErrors.newTourneyName && <p className="text-xs font-bold" style={{ color: C.red }}>{formErrors.newTourneyName}</p>}
           <LakeSelect value={newTourneyLake} onChange={setNewTourneyLake} />
-          <Input type="date" value={newTourneyDate} onChange={(e) => setNewTourneyDate(e.target.value)} />
+          <div>
+            <p className="text-xs mb-1" style={{ color: C.muted }}>Tournament Date</p>
+            <Input type="date" value={newTourneyDate} onChange={(e) => { setNewTourneyDate(e.target.value); setFormErrors((p) => ({ ...p, newTourneyDate: undefined })) }} style={formErrors.newTourneyDate ? { borderColor: C.red } : {}} />
+            {formErrors.newTourneyDate && <p className="text-xs font-bold" style={{ color: C.red }}>{formErrors.newTourneyDate}</p>}
+          </div>
           {/* Start / End times */}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="text-xs mb-1" style={{ color: C.muted }}>Start time</p>
-              <Input type="datetime-local" value={newTourneyStartTime} onChange={(e) => setNewTourneyStartTime(e.target.value)} />
+              <Input type="datetime-local" value={newTourneyStartTime} onChange={(e) => { setNewTourneyStartTime(e.target.value); setFormErrors((p) => ({ ...p, newTourneyStartTime: undefined })) }} style={formErrors.newTourneyStartTime ? { borderColor: C.red } : {}} />
+              {formErrors.newTourneyStartTime && <p className="text-xs font-bold" style={{ color: C.red }}>{formErrors.newTourneyStartTime}</p>}
             </div>
             <div>
               <p className="text-xs mb-1" style={{ color: C.muted }}>End time</p>
-              <Input type="datetime-local" value={newTourneyEndTime} onChange={(e) => setNewTourneyEndTime(e.target.value)} />
+              <Input type="datetime-local" value={newTourneyEndTime} onChange={(e) => { setNewTourneyEndTime(e.target.value); setFormErrors((p) => ({ ...p, newTourneyEndTime: undefined })) }} style={formErrors.newTourneyEndTime ? { borderColor: C.red } : {}} />
+              {formErrors.newTourneyEndTime && <p className="text-xs font-bold" style={{ color: C.red }}>{formErrors.newTourneyEndTime}</p>}
             </div>
           </div>
           {/* Final countdown threshold */}
@@ -696,11 +759,13 @@ function CoachTab({ orgId, tier = 'pro' }) {
         <SectionLabel>Boats Overview</SectionLabel>
         <form onSubmit={addBoat} className="space-y-2 mb-4">
           <div className="grid grid-cols-2 gap-2">
-            <Input value={newBoatName} onChange={(e) => setNewBoatName(e.target.value)} placeholder="Boat name" />
-            <Input value={newBoatCaptain} onChange={(e) => setNewBoatCaptain(e.target.value)} placeholder="Captain name" />
+            <Input value={newBoatName} onChange={(e) => { setNewBoatName(e.target.value); setFormErrors((p) => ({ ...p, newBoatName: undefined })) }} placeholder="Boat name" style={formErrors.newBoatName ? { borderColor: C.red } : {}} />
+            <Input value={newBoatCaptain} onChange={(e) => { setNewBoatCaptain(e.target.value); setFormErrors((p) => ({ ...p, newBoatCaptain: undefined })) }} placeholder="Captain name" style={formErrors.newBoatCaptain ? { borderColor: C.red } : {}} />
             <Input value={newBoatA1} onChange={(e) => setNewBoatA1(e.target.value)} placeholder="Angler 1" />
             <Input value={newBoatA2} onChange={(e) => setNewBoatA2(e.target.value)} placeholder="Angler 2" />
           </div>
+          {formErrors.newBoatName && <p className="text-xs font-bold" style={{ color: C.red }}>{formErrors.newBoatName}</p>}
+          {formErrors.newBoatCaptain && <p className="text-xs font-bold" style={{ color: C.red }}>{formErrors.newBoatCaptain}</p>}
           <select
             value={newBoatTeam}
             onChange={(e) => setNewBoatTeam(e.target.value)}
@@ -731,24 +796,46 @@ function CoachTab({ orgId, tier = 'pro' }) {
       {/* Roster */}
       <ReceiptCard>
         <SectionLabel>Roster</SectionLabel>
+        {orgTeam && (
+          <div className="mb-4">
+            <p className="text-xs mb-1.5" style={{ color: C.muted }}>Roster Mode</p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => updateRosterMode('open')}
+                className="flex-1 py-2 rounded text-xs font-bold transition-colors"
+                style={{ backgroundColor: rosterMode === 'open' ? C.gold : C.bg, color: rosterMode === 'open' ? C.bg : C.muted, border: `1px solid ${rosterMode === 'open' ? C.gold : C.border}` }}
+              >Open — Anglers self-add</button>
+              <button type="button" onClick={() => updateRosterMode('locked')}
+                className="flex-1 py-2 rounded text-xs font-bold transition-colors"
+                style={{ backgroundColor: rosterMode === 'locked' ? C.gold : C.bg, color: rosterMode === 'locked' ? C.bg : C.muted, border: `1px solid ${rosterMode === 'locked' ? C.gold : C.border}` }}
+              >Locked — Director adds</button>
+            </div>
+            <p className="text-xs mt-1.5" style={{ color: C.muted }}>
+              {rosterMode === 'open' ? 'Anglers can join with your org code and add themselves to a team.' : 'You manually add all anglers. Anglers must be selected from the roster when joining.'}
+            </p>
+          </div>
+        )}
         <form onSubmit={createTeam} className="flex gap-2 mb-3">
-          <Input value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)} placeholder="New team name" className="flex-1" />
+          <Input value={newTeamName} onChange={(e) => { setNewTeamName(e.target.value); setFormErrors((p) => ({ ...p, newTeamName: undefined })) }} placeholder="New team name" className="flex-1" style={formErrors.newTeamName ? { borderColor: C.red } : {}} />
           <GoldButton disabled={saving}>+ Team</GoldButton>
         </form>
+        {formErrors.newTeamName && <p className="text-xs font-bold mb-2" style={{ color: C.red }}>{formErrors.newTeamName}</p>}
         {teams.length > 0 && (
           <form onSubmit={addMember} className="flex gap-2 mb-4">
-            <Input value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="Member name" className="flex-1" />
+            <Input value={newMemberName} onChange={(e) => { setNewMemberName(e.target.value); setFormErrors((p) => ({ ...p, newMemberName: undefined })) }} placeholder="Member name" className="flex-1" style={formErrors.newMemberName ? { borderColor: C.red } : {}} />
             <select
               value={newMemberTeam}
-              onChange={(e) => setNewMemberTeam(e.target.value)}
+              onChange={(e) => { setNewMemberTeam(e.target.value); setFormErrors((p) => ({ ...p, newMemberTeam: undefined })) }}
               className="rounded px-2 py-2 text-sm focus:outline-none"
-              style={{ backgroundColor: C.bg, border: `1px solid ${C.border}`, color: newMemberTeam ? C.text : C.muted }}
+              style={{ backgroundColor: C.bg, border: `1px solid ${formErrors.newMemberTeam ? C.red : C.border}`, color: newMemberTeam ? C.text : C.muted }}
             >
               <option value="">Team</option>
               {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
             <GoldButton disabled={saving}>Add</GoldButton>
           </form>
+        )}
+        {(formErrors.newMemberName || formErrors.newMemberTeam) && (
+          <p className="text-xs font-bold mb-2" style={{ color: C.red }}>{formErrors.newMemberName || formErrors.newMemberTeam}</p>
         )}
         {teams.length === 0 ? (
           <p className="text-sm text-center py-3" style={{ color: C.muted }}>No teams yet.</p>
@@ -1202,6 +1289,7 @@ function AnglerTab({ orgId }) {
   const [activeTournament, setActiveTournament] = useState(null)
   const [catches, setCatches] = useState([])
   const [loading, setLoading] = useState(true)
+  const [anglerPhotoViewer, setAnglerPhotoViewer] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -1277,16 +1365,18 @@ function AnglerTab({ orgId }) {
             {catches.map((c, i) => (
               <div key={c.id} className="flex items-center gap-3 px-3 py-2 rounded" style={{ backgroundColor: C.bg, border: `1px solid ${C.border}` }}>
                 <span className="text-xs font-bold w-6 text-center" style={{ color: i === 0 ? C.goldLight : C.muted }}>#{i + 1}</span>
+                <CatchThumbnail photoUrl={c.photo_url} onClick={() => setAnglerPhotoViewer(c.photo_url)} />
                 <div className="flex-1">
                   <span className="font-bold text-sm" style={{ color: C.text }}>{parseFloat(c.weight).toFixed(2)} lbs</span>
+                  {c.length_inches && <span className="text-xs ml-2" style={{ color: C.muted }}>{parseFloat(c.length_inches).toFixed(1)}"</span>}
                   <span className="text-xs ml-2" style={{ color: C.muted }}>{c.angler_name}</span>
                 </div>
-                {c.photo_url && <img src={c.photo_url} alt="" className="w-10 h-10 rounded object-cover" style={{ border: `1px solid ${C.border}` }} />}
               </div>
             ))}
           </div>
         )}
       </ReceiptCard>
+      <PhotoViewer photoUrl={anglerPhotoViewer} onClose={() => setAnglerPhotoViewer(null)} />
     </div>
   )
 }
@@ -2318,6 +2408,7 @@ export default function TeamDashboard() {
     Coach: 'Live Dashboard & Roster',
     Captain: 'Boat Logging & Controls',
     Angler: 'Tournament View',
+    History: 'Past Tournament Catches',
     Parent: 'Live Feed — No Login Required',
     Conditions: 'Weather, Lake & Solunar',
     Course: 'Coach Certification',
@@ -2350,6 +2441,7 @@ export default function TeamDashboard() {
         {activeTab === 'Coach' && isDirector && <CoachTab orgId={orgId} tier={org?.tier || 'pro'} />}
         {activeTab === 'Captain' && <CaptainTab orgId={orgId} />}
         {activeTab === 'Angler' && <AnglerTab orgId={orgId} />}
+        {activeTab === 'History' && <TournamentHistory orgId={orgId} />}
         {activeTab === 'Parent' && <ParentTab orgId={orgId} />}
         {activeTab === 'Conditions' && <ConditionsTab orgId={orgId} />}
         {activeTab === 'Course' && <CourseTab />}

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink, Link } from 'react-router-dom'
 import BassApp from './apps/BassApp'
+import MyCatches from './apps/MyCatches'
 import ClubDashboard from './apps/ClubDashboard'
 import TeamDashboard from './apps/TeamDashboard'
 import RegisterPage from './apps/RegisterPage'
@@ -85,6 +86,7 @@ function GatedApp() {
       <NavBar />
       <Routes>
         <Route path="/app" element={<BassApp />} />
+        <Route path="/app/catches" element={<MyCatches />} />
         <Route path="/club" element={<OrgGate orgType="club"><ClubDashboard /></OrgGate>} />
         <Route path="/teams" element={<OrgGate orgType="team"><TeamDashboard /></OrgGate>} />
         <Route path="/register" element={<RegisterPage />} />

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import MascotHeader from '../components/shared/MascotHeader'
 import ReceiptCard from '../components/shared/ReceiptCard'
 import PhotoCapture from '../components/shared/PhotoCapture'
@@ -8,6 +9,7 @@ import { getPatternsForSeason, categoryColors } from '../utils/patterns'
 import { lakes } from '../data/lakes'
 import LakeSelect from '../components/shared/LakeSelect'
 import { fetchLakeLevelFor } from '../utils/lakeLevel'
+import { saveCatch } from '../utils/catchStorage'
 
 const C = {
   bg: '#0a0900', card: '#111008', border: '#2a2000',
@@ -103,6 +105,12 @@ function TrendBadge({ trend }) {
 export default function BassApp() {
   const [selectedLake, setSelectedLake] = useState(lakes[0])
   const [photo, setPhoto] = useState(null)
+  const [photoFile, setPhotoFile] = useState(null)
+  const [catchWeight, setCatchWeight] = useState('')
+  const [catchLength, setCatchLength] = useState('')
+  const [savingCatch, setSavingCatch] = useState(false)
+  const [catchSaved, setCatchSaved] = useState(false)
+  const [gpsStatus, setGpsStatus] = useState('')
   const [intelOpen, setIntelOpen] = useState(false)
 
   const [weather, setWeather] = useState(null)
@@ -211,6 +219,43 @@ export default function BassApp() {
     : []
   const pTrend = pressureTrend(pressureReadings)
   const llTrend = lakeLevel ? levelTrend(lakeLevel.readings) : 'stable'
+
+  async function handleSaveCatch() {
+    if (!photoFile) return
+    setSavingCatch(true)
+    setGpsStatus('Getting GPS location…')
+    let lat = null, lng = null
+    try {
+      const pos = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000, maximumAge: 0, enableHighAccuracy: true })
+      })
+      lat = pos.coords.latitude
+      lng = pos.coords.longitude
+      setGpsStatus('Location captured')
+    } catch {
+      setGpsStatus('Location unavailable — catch saved without GPS')
+    }
+    try {
+      await saveCatch({
+        photoBlob: photoFile,
+        photoUrl: photo,
+        lat, lng,
+        weight: catchWeight || null,
+        length: catchLength || null,
+        lakeId: selectedLake?.id || null,
+        lakeName: selectedLake?.name || null,
+      })
+      setCatchSaved(true)
+      setPhoto(null)
+      setPhotoFile(null)
+      setCatchWeight('')
+      setCatchLength('')
+      setGpsStatus('')
+    } catch {
+      setGpsStatus('Failed to save catch')
+    }
+    setSavingCatch(false)
+  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: C.bg }}>
@@ -342,13 +387,74 @@ export default function BassApp() {
 
         {/* 3 — CATCH LOGGING */}
         <ReceiptCard>
-          <h2 className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: C.gold }}>
-            Catch Logging
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: C.gold }}>
+              Catch Logging
+            </h2>
+            <Link to="/app/catches" className="text-xs font-bold uppercase tracking-widest hover:opacity-70 transition" style={{ color: C.muted }}>
+              My Catches →
+            </Link>
+          </div>
           <PhotoCapture
-            onCapture={(file, url) => setPhoto(url)}
+            onCapture={(file, url) => {
+              setPhoto(url)
+              setPhotoFile(file)
+              setCatchSaved(false)
+            }}
             label="Capture Your Catch"
           />
+          {photo && (
+            <div className="mt-3 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs uppercase tracking-widest font-bold mb-1" style={{ color: C.muted }}>
+                    Weight (lb)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={catchWeight}
+                    onChange={(e) => setCatchWeight(e.target.value)}
+                    placeholder="4.25"
+                    className="w-full px-3 py-2 rounded-lg text-sm font-mono outline-none"
+                    style={{ backgroundColor: C.bg, border: `1px solid ${C.border}`, color: C.text }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs uppercase tracking-widest font-bold mb-1" style={{ color: C.muted }}>
+                    Length (in)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.25"
+                    inputMode="decimal"
+                    value={catchLength}
+                    onChange={(e) => setCatchLength(e.target.value)}
+                    placeholder="19.5"
+                    className="w-full px-3 py-2 rounded-lg text-sm font-mono outline-none"
+                    style={{ backgroundColor: C.bg, border: `1px solid ${C.border}`, color: C.text }}
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleSaveCatch}
+                disabled={savingCatch}
+                className="w-full py-3 rounded-lg text-sm font-bold uppercase tracking-widest transition hover:opacity-80 disabled:opacity-50"
+                style={{ backgroundColor: C.gold, color: C.bg }}
+              >
+                {savingCatch ? 'Saving…' : 'Save Catch'}
+              </button>
+              {gpsStatus && (
+                <p className="text-xs text-center" style={{ color: C.muted }}>{gpsStatus}</p>
+              )}
+              {catchSaved && (
+                <p className="text-xs text-center py-2 rounded" style={{ color: C.green, backgroundColor: `${C.green}10` }}>
+                  Catch saved! View it in My Catches.
+                </p>
+              )}
+            </div>
+          )}
         </ReceiptCard>
 
         {/* 4 — DAILY INTEL (collapsible) */}
